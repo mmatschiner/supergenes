@@ -1,0 +1,111 @@
+# lg01_9_10
+gadMor_Stat scf7180000174049 lg01
+gadMor_Stat scf7180000173314 lg01
+gadMor_Stat scf7180000173793 lg01
+melAeg MeA_20160214_scaffold_553:1-279518 lg01
+melAeg MeA_20160214_scaffold_1604:58948-119480 lg01
+melAeg MeA_20160214_scaffold_895:1-207496 lg01
+melAeg MeA_20160214_scaffold_1854:1-47276 lg01
+# lg01_15_16
+gadMor_Stat scf7180000176767 lg01
+gadMor_Stat scf7180000172232 lg01
+gadMor_Stat scf7180000173794 lg01
+gadMor_Stat scf7180000175064 lg01
+melAeg MeA_20160214_scaffold_979:18192-134554 lg01
+# lg01_16_17
+gadMor_Stat scf7180000174049 lg01 # already covered in lg01_9_10
+gadMor_Stat scf7180000171050 lg01
+gadMor_Stat scf7180000175444 lg01
+melAeg MeA_20160214_scaffold_1854:49349-100880 lg01 # already covered in lg01_9_10
+melAeg MeA_20160214_scaffold_1736:13618-96671 lg01
+melAeg MeA_20160214_scaffold_410:1-48168 lg01
+# lg01_18_19 
+gadMor_Stat scf7180000173314 lg01 # already covered in lg01_9_10
+gadMor_Stat scf7180000171050 lg01 # already covered in lg01_16_17
+melAeg MeA_20160214_scaffold_895:1-207496 lg01 # already covered in lg01_9_10
+melAeg MeA_20160214_scaffold_1736:13618-96671 lg01 # already covered in lg01_16_17
+# lg01_20_21
+gadMor_Stat scf7180000172839 lg01
+gadMor_Stat scf7180000175870 lg01
+gadMor_Stat scf7180000170842 lg01
+gadMor_Stat scf7180000170857 lg01
+melAeg MeA_20160214_scaffold_164:5918-99000 lg01
+melAeg MeA_20160214_scaffold_1879:1-68404 lg01
+# lg01_24_25
+gadMor_Stat scf7180000175667 lg01
+gadMor_Stat scf7180000171628 lg01
+melAeg MeA_20160214_scaffold_725:8363-86790 lg01
+melAeg MeA_20160214_scaffold_2164:1-82042 lg01
+# lg01_26_27
+gadMor_Stat scf7180000174050 lg01
+gadMor_Stat scf7180000173986 lg01
+gadMor_Stat scf7180000172395 lg01
+gadMor_Stat scf7180000174960 lg01
+gadMor_Stat scf7180000173151 lg01
+gadMor_Stat scf7180000176267 lg01
+gadMor_Stat scf7180000173680 lg01
+melAeg MeA_20160214_scaffold_1070:121302-145923 lg01
+melAeg MeA_20160214_scaffold_6455:1-14225 lg01
+melAeg MeA_20160214_scaffold_8143:1-7926 lg01
+melAeg MeA_20160214_scaffold_2720:1-56802 lg01
+# lg02_18_19
+gadMor_Stat scf7180000173351 lg02
+gadMor_Stat scf7180000176322 lg02
+gadMor_Stat scf7180000171076 lg02
+gadMor_Stat scf7180000171199 lg02
+gadMor_Stat scf7180000172560 lg02
+gadMor_Stat scf7180000171630 lg02
+gadMor_Stat scf7180000172054 lg02
+melAeg MeA_20160214_scaffold_170:27711-284173 lg02
+melAeg MeA_20160214_scaffold_170:286213-416707 lg02
+melAeg MeA_20160214_scaffold_170:416733-433062 lg02
+melAeg MeA_20160214_scaffold_170:439345-475535 lg02
+melAeg MeA_20160214_scaffold_689:89873-242481 lg02
+# lg02_21_22
+gadMor_Stat scf7180000175202 lg02
+# lg02_22_23
+gadMor_Stat scf7180000170574 lg02
+gadMor_Stat scf7180000170897 lg02
+melAeg MeA_20160214_scaffold_1420:85465-123585 lg02
+melAeg MeA_20160214_scaffold_1420:1-85439 lg02
+melAeg MeA_20160214_scaffold_409:45304-92552 lg02
+# lg02_23_24
+gadMor_Stat scf7180000173352 lg02
+melAeg MeA_20160214_scaffold_750:181674-229534 lg02
+melAeg MeA_20160214_scaffold_2550:1-64465 lg02
+# lg02_24_25
+gadMor_Stat scf7180000175069 lg02
+melAeg MeA_20160214_scaffold_874:12556-53982 lg02
+melAeg MeA_20160214_scaffold_3029:1-46341 lg02
+# lg07_13_14
+gadMor_Stat scf7180000173083 lg07
+gadMor_Stat scf7180000172941 lg07
+gadMor_Stat scf7180000177070 lg07
+gadMor_Stat scf7180000177071 lg07
+melAeg MeA_20160214_scaffold_271:1-285897 lg07
+melAeg MeA_20160214_scaffold_297:1-87957 lg07
+melAeg MeA_20160214_scaffold_297:92588-306436 lg07
+melAeg MeA_20160214_scaffold_2309:1-47298 lg07
+# lg07_22_23
+gadMor_Stat scf7180000173080 lg07
+gadMor_Stat scf7180000173081 lg07
+gadMor_Stat scf7180000173082 lg07
+gadMor_Stat scf7180000173123 lg07
+gadMor_Stat scf7180000173122 lg07
+melAeg MeA_20160214_scaffold_301:1-78015 lg07
+melAeg MeA_20160214_scaffold_1947:1-93951 lg07
+melAeg MeA_20160214_scaffold_271:292158-394191 lg07
+melAeg MeA_20160214_scaffold_271:1-285897 lg07
+# lg07_23_24
+gadMor_Stat scf7180000175721 lg07
+gadMor_Stat scf7180000175722 lg07
+gadMor_Stat scf7180000175147 lg07
+gadMor_Stat scf7180000172941 lg07
+melAeg MeA_20160214_scaffold_12:428325-831615 lg07
+melAeg MeA_20160214_scaffold_12:842474-926208 lg07
+melAeg MeA_20160214_scaffold_297:1-87957 lg07
+melAeg MeA_20160214_scaffold_297:92588-306436 lg07
+# lg07_26_27???
+melAeg MeA_20160214_scaffold_195:1-72161 lg07
+melAeg MeA_20160214_scaffold_195:72172-423860 lg07
+melAeg MeA_20160214_scaffold_195:427372-454757 lg07
