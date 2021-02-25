@@ -1,5 +1,3 @@
 # m_matschiner Tue Feb 23 23:53:18 CET 2021
 
-# Provide instructions on how to download ped files into ../data/ped.
-# Provide instructions on how to download ../data/assemblies/coastal/gadMor_Stat.fasta
-# Provide instructions on how to download ../data/assemblies/haddock/melAeg.fasta
+- Replace XXX with right ENA accession in get_assemblies.sh

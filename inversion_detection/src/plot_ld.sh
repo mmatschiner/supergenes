@@ -4,7 +4,7 @@
 module load ruby/2.1.5
 
 # Generate a ld plot for each chromosome.
-for i in ../res/plink/*_strict.ld
+for i in ../res/plink/*.ld
 do
 	ruby plot_ld.rb ${i} ${i%.ld}.svg
 done

@@ -3,10 +3,10 @@
 # Load the BLAST+ module.
 module load blast+/2.2.29
 
-# Make a BLAST database for the coastal assembly.
+# Make a BLAST database for the gadMor_Stat assembly.
 makeblastdb -in ../data/assemblies/gadMor_Stat.fasta -dbtype nucl
 
-# Make a BLAST database for the haddock assembly
+# Make a BLAST database for the melAeg assembly
 makeblastdb -in ../data/assemblies/melAeg.fasta -dbtype nucl
 
 # Make a BLAST database for each fo the linkage groups of the gadMor2 assembly.
