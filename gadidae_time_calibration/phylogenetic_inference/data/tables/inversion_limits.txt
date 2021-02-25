@@ -1,0 +1,7 @@
+# m_matschiner Tue Aug 7 16:04:16 CEST 2018
+#
+# This information is based on file split_contigs.txt from the inverstion_detection analysis.
+#
+LG01	9114741	26192386
+LG02	18489307	24048607
+LG07	13610591	23019113

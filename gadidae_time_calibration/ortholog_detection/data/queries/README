@@ -1,0 +1,7 @@
+# m_matschiner Wed Jul 18 15:41:29 CEST 2018
+
+File exons.fasta contains amino-acid sequences for zebrafish exons
+used as queries in ortholog detection in Roth et al. (2020).
+Files gadmor_exons.fasta and gadmor_exons_nucl.fasta contain amino-
+acid and nucleotide sequences, respectively, identified as homologs
+to the zebrafish queries in Roth et al. (2020).

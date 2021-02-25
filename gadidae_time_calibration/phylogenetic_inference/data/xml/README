@@ -1,0 +1,13 @@
+# m_matschiner Tue Aug 7 17:33:29 CEST 2018
+
+The xml file was prepared manually with beauti.
+Of the alignments in ../../res/alignments/12, four
+alignments were excluded due to poor convergence of
+the gene trees of these alignments in preliminary
+analyses. These alignments are:
+ENSDARG00000003189
+ENSDARG00000017034
+ENSDARG00000059963
+ENSDARG00000062269
+
+Age constraints are based on Musilova et al. (2019).

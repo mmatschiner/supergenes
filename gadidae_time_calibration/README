@@ -1,0 +1,12 @@
+# m_matschiner Thu Feb 25 18:43:45 CET 2021
+
+Scripts in this directory generate a multi-marker phylogeny of Gadidae
+including the two species Gadus ogac and Gadus macrocephalus that were
+not included in Malmstrøm et al. 2016. This phylogeny is constructed
+using StarBEAST2, based on two age constraints from Musilova et al.
+(2019).
+
+Two separate subdirectories are included in this directory, for
+ortholog detection and phylogenetic inference. Of these scripts in
+subdirectory ortholog_detection should be executed before those in
+phylogenetic_inference.
