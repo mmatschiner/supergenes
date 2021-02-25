@@ -14,4 +14,4 @@ Analyses were conducted in the following order:
 6. [`cod_phylogenomics`](cod_phylogenomics)
 7. [`demography`](demography)
 
-Note that the files named `run_all.sh` that can be found in each `src` directory (e.g. [`inversion_detection/src`](inversion_detection/src)) are not intended to be executed, but they specify the order in which all other scripts should be executed.
+Note that the files named `run_all.sh` that can be found in each `src` directory (e.g. [`inversion_detection/src/run_all.sh`](inversion_detection/src/run_all.sh)) are not intended to be executed, but they specify the order in which all other scripts should be executed.
