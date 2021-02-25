@@ -6,10 +6,10 @@ More information on the individual analyses can be found in the `README` files p
 
 Analyses were conducted in the following order:
 
-1. [`mito_nuclear_comparison`](mito_nuclear_comparison)
-2. [`inversion_detection`](inversion_detection)
-3. [`three_taxon_alignments`](three_taxon_alignments)
-4. [`gadidae_time_calibration`](gadidae_time_calibration)
+1. [`inversion_detection`](inversion_detection)
+2. [`three_taxon_alignments`](three_taxon_alignments)
+3. [`gadidae_time_calibration`](gadidae_time_calibration)
+4. [`mito_nuclear_comparison`](mito_nuclear_comparison)
 5. [`gadidae_phylogenomics`](gadidae_phylogenomics)
 6. [`cod_phylogenomics`](cod_phylogenomics)
 7. [`demography`](demography)

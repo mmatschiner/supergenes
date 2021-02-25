@@ -1,0 +1,12 @@
+# m_matschiner Sun Nov 10 16:46:47 CET 2019
+
+The analyses in this directory were performed to test the claim by
+Arnason and Halldorsdottir (2019) that arctogadus glacialis is some
+sort of hybrid species. The results in directory res/iqtree show that
+when alignments are based on local assembly instead of mapping to the
+cod reference as in A&H, mitochondrial and nuclear phylogenies are
+fully concordant. The sample used by A&H is in both phylogenies
+closest to Trisopterus minutus, as would be expected if the sample was
+not in fact an Arctogadus but instead a blue whiting (Micromesistius
+poutassou), as also suggested by 100% identical mitochondrial genome
+of the blue whiting (A&H).
