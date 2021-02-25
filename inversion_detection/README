@@ -1,0 +1,6 @@
+# m_matschiner Thu Feb 25 17:46:35 CET 2021
+
+Scripts in this directory facilitate the identification of inversion
+breakpoints for the supergenes on LGs 1, 2, 7, and 12. Not all steps
+of this analysis can be automated; some parts require manual
+inspection of output (see src/run_all.sh).
