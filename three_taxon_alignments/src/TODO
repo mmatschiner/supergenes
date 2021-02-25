@@ -1,0 +1,5 @@
+# m_matschiner Wed Feb 24 00:41:51 CET 2021
+
+- Replace XXX with right ENA accession in get_assemblies.sh
+
+- Replace XXX with right ENA accessions in get_fastq.sh

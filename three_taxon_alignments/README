@@ -1,0 +1,11 @@
+# m_matschiner Thu Feb 25 17:41:19 CET 2021
+
+Scripts in this directory use assembly and read data to build a 
+three-way whole-genome alignment for gadMor2, gadMor_Stat, and melAeg.
+Based on the consistency between different version of this alignment
+built with three different approaches, a mask is generated to exclude
+unreliable alignment sites in downstream analyses.
+
+The three-way whole-genome alignment, together with the gadMor2
+annotation, is further used to analyze mutation load and to identify
+differences in vitellogenin genes.
