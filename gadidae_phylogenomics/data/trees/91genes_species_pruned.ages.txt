@@ -1,0 +1,15 @@
+91genes_species_pruned:
+arcgla_spc borsai_spc: 
+2.188825
+gadcha_spc gadmor_spc: 
+1.15738
+gadmac_spc gadoga_spc: 
+0.061036
+gadcha_spc gadmac_spc: 
+1.891317
+arcgla_spc gadcha_spc: 
+2.753839
+melaeg_spc mermer_spc: 
+5.774125
+arcgla_spc melaeg_spc: 
+7.246093

@@ -1,0 +1,18 @@
+#NEXUS
+Begin taxa;
+	Dimensions ntax=9;
+		Taxlabels
+			arcgla_spc 
+			borsai_spc 
+			gadcha_spc 
+			gadmac_spc 
+			gadmor_spc 
+			gadoga_spc 
+			melaeg_spc 
+			mermer_spc 
+			polvir_spc 
+			;
+End;
+begin trees;
+	tree TREE1 = [&R] ((((arcgla_spc:2.188825,borsai_spc:2.188825):0.565014,((gadcha_spc:1.15738,gadmor_spc:1.15738):0.733937,(gadmac_spc:0.061036,gadoga_spc:0.061036):1.83028):0.862523):4.492254,(melaeg_spc:5.774125,mermer_spc:5.774125):1.471969):1.313891,polvir_spc:8.559984);
+end;

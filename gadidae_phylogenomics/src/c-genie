@@ -1,0 +1,2818 @@
+#!/usr/local/bin/python3
+
+# m_matschiner Wed Aug 29 18:56:36 CEST 2018
+# michaelmatschiner@mac.com
+
+# The Tree class.
+class Tree(object):
+
+    def __init__(self, newick_string):
+        self.newick_string = newick_string
+        self.edges = []
+
+    def get_newick_string(self):
+        return self.newick_string
+
+    def parse_newick_string(self):
+        working_newick_string = self.newick_string
+        number_of_internal_nodes = 0
+        number_of_edges = 0
+
+        # Remove comments from the tree string.
+        pattern = re.compile("\[.*?\]")
+        hit = "placeholder"
+        while hit != None:
+            hit = pattern.search(working_newick_string)
+            if hit != None:
+                working_newick_string = working_newick_string.replace(hit.group(0),"")
+
+        # Check whether a branch above the root is present, and if so, remove it.
+        if working_newick_string[0:2] == "((" and working_newick_string[-1] == ")" and working_newick_string[-2] != ")":
+            level = 0
+            newick_string_tail_start_pos = 0
+            newick_string_tail = ""
+            for pos in range(len(working_newick_string)):
+                if working_newick_string[pos] == "(":
+                    level += 1
+                if working_newick_string[pos] == ")":
+                    level -= 1
+                if level == 1 and pos > 1:
+                    newick_string_tail_start_pos = pos
+                    newick_string_tail = working_newick_string[pos+1:]
+                    break
+            if newick_string_tail.count(",") == 0:
+                working_newick_string = working_newick_string[1:newick_string_tail_start_pos+1]
+
+        # Parse the bifurcating part of the tree.
+        if ":" in working_newick_string:
+            pattern = re.compile("\(([a-zA-Z0-9_\.\-]+?):([\d\.Ee-]+?),([a-zA-Z0-9_\.\-]+?):([\d\.Ee-]+?)\)")
+        else:
+            print("ERROR: It appears that the tree string does not include branch lengths!")
+            sys.exit(1)
+        hit = "placeholder"
+        while hit != None:
+            hit = pattern.search(working_newick_string)
+            if hit != None:
+                number_of_internal_nodes += 1
+                number_of_edges += 2
+                internal_node_id = "internalNode" + str(number_of_internal_nodes) + "X"
+                edge1 = Edge("edge" + str(number_of_edges-1) + "X")
+                edge1.set_node_ids([internal_node_id, hit.group(1)])
+                edge1.set_length(float(hit.group(2)))
+                edge2 = Edge("edge" + str(number_of_edges) + "X")
+                edge2.set_node_ids([internal_node_id, hit.group(3)])
+                edge2.set_length(float(hit.group(4)))
+                self.edges.append(edge1)
+                self.edges.append(edge2)
+                working_newick_string = working_newick_string.replace(hit.group(0), internal_node_id)
+
+        # Make sure the remaining string includes a single node and use this node id to determine root edges.
+        pattern_rooted = re.compile("^internalNode\d+X$")
+        hit_rooted = pattern_rooted.search(working_newick_string)
+        if hit_rooted == None:
+            print('ERROR: The newick tree string could not be parsed!')
+            print('The remaining unparsed part of the newick string: \"{}\"'.format(working_newick_string))
+            sys.exit(1)
+        else:
+            root_node_id = hit_rooted.group(0)
+            for edge in self.get_edges():
+                if edge.get_node_ids()[0] == root_node_id:
+                    edge.set_is_root_edge(True)
+                else:
+                    edge.set_is_root_edge(False)
+
+    def parse_extended_newick_string(self):
+        working_newick_string = self.newick_string
+        number_of_internal_nodes = 0
+        number_of_edges = 0
+
+        # Check whether a branch above the root is present, and if so, remove it.
+        if working_newick_string[0:2] == "((" and working_newick_string[-1] == ")" and working_newick_string[-2] != ")":
+            level = 0
+            newick_string_tail_start_pos = 0
+            newick_string_tail = ""
+            for pos in range(len(working_newick_string)):
+                if working_newick_string[pos] == "(":
+                    level += 1
+                if working_newick_string[pos] == ")":
+                    level -= 1
+                if level == 1 and pos > 1:
+                    newick_string_tail_start_pos = pos
+                    newick_string_tail = working_newick_string[pos+1:]
+                    break
+            if newick_string_tail.count(",") == 0:
+                working_newick_string = working_newick_string[1:newick_string_tail_start_pos+1]
+
+        # Parse the bifurcating part of the tree.
+        if ":" in working_newick_string:
+            if "[" in working_newick_string:
+                pattern = re.compile("\(([a-zA-Z0-9_\.\-]+?)\[\&dmv=\{([\d\.]+?)\}\]:([\d\.Ee-]+?),([a-zA-Z0-9_\.\-]+?)\[\&dmv=\{([\d\.]+?)\}\]:([\d\.Ee-]+?)\)")
+            else:
+                print("ERROR: It appears that the tree string does not include annotation!")
+                sys.exit(1)
+        else:
+            print("ERROR: It appears that the tree string does not include branch lengths!")
+            sys.exit(1)
+        hit = "placeholder"
+        while hit != None:
+            hit = pattern.search(working_newick_string)
+            if hit != None:
+                number_of_internal_nodes += 1
+                number_of_edges += 2
+                internal_node_id = "internalNode" + str(number_of_internal_nodes) + "X"
+                edge1 = Edge("edge" + str(number_of_edges-1) + "X")
+                edge1.set_node_ids([internal_node_id, hit.group(1)])
+                edge1.set_dmv(float(hit.group(2)))
+                edge1.set_length(float(hit.group(3)))
+                edge2 = Edge("edge" + str(number_of_edges) + "X")
+                edge2.set_node_ids([internal_node_id, hit.group(4)])
+                edge2.set_dmv(float(hit.group(5)))
+                edge2.set_length(float(hit.group(6)))
+                self.edges.append(edge1)
+                self.edges.append(edge2)
+                working_newick_string = working_newick_string.replace(hit.group(0), internal_node_id)
+
+        # Make sure the remaining string includes a single node and use this node id to determine root edges.
+        pattern_rooted = re.compile("^internalNode\d+X$")
+        hit_rooted = pattern_rooted.search(working_newick_string)
+        if hit_rooted == None:
+            print('ERROR: The newick tree string could not be parsed!')
+            print('The remaining unparsed part of the newick string: \"{}\"'.format(working_newick_string))
+            sys.exit(1)
+        else:
+            root_node_id = hit_rooted.group(0)
+            for edge in self.get_edges():
+                if edge.get_node_ids()[0] == root_node_id:
+                    edge.set_is_root_edge(True)
+                else:
+                    edge.set_is_root_edge(False)
+
+    def get_edges(self):
+        return self.edges
+
+    def get_number_of_edges(self):
+        return len(self.edges)
+
+    def get_number_of_extant_edges(self):
+        number_of_extant_edges = 0
+        for edge in self.edges:
+            if edge.get_is_extant():
+                number_of_extant_edges += 1
+        return number_of_extant_edges
+
+    def set_extant_progeny_ids(self):
+        for edge in self.get_edges():
+            if edge.get_is_extant():
+                species_id = edge.get_node_ids()[1]
+                this_edge = edge
+                species_id_added_to_root_edge = False
+                while species_id_added_to_root_edge == False:
+                    this_edge.add_extant_progeny_id(species_id)
+                    if this_edge.get_is_root_edge():
+                        species_id_added_to_root_edge = True
+                    else:
+                        for other_edge in self.get_edges():
+                            if other_edge.get_node_ids()[1] == this_edge.get_node_ids()[0]:
+                                parent_edge = other_edge
+                                break
+                    this_edge = parent_edge
+
+    def set_times(self):
+        # Get the durations between root and extant edges.
+        # These should be approximately similar, if not produce a warning.
+        total_edge_lengths = []
+        for edge in self.get_edges():
+            if edge.get_is_extant():
+                total_edge_length = edge.get_length()
+                if edge.get_is_root_edge():
+                    total_edge_lengths.append(total_edge_length)
+                else:
+                    root_edge_found = False
+                    this_edge = edge
+                    while root_edge_found == False:
+                        for other_edge in self.get_edges():
+                            if other_edge.get_node_ids()[1] == this_edge.get_node_ids()[0]:
+                                parent_edge = other_edge
+                                break
+                        if parent_edge == None:
+                            print('ERROR: The parent edge for edge {} could not be found'.format(this_edge.get_id()))
+                            sys.exit(1)
+                        total_edge_length += parent_edge.get_length()
+                        if parent_edge.get_is_root_edge():
+                            root_edge_found = True
+                            total_edge_lengths.append(total_edge_length)
+                        else:
+                            this_edge = parent_edge
+        max_total_edge_length = max(total_edge_lengths)
+        if max_total_edge_length - min(total_edge_lengths) > 0.1:
+            print('WARNING: The tree appears not to be ultrametric. Some terminal branches will be extended so that they all end at the same time.')
+            print('')
+        # Extend terminal edges if necessary.
+        for edge in self.get_edges():
+            if edge.get_is_extant():
+                total_edge_length = edge.get_length()
+                if edge.get_is_root_edge():
+                    edge.set_length(edge.get_length() + max_total_edge_length - total_edge_length)
+                else:
+                    root_edge_found = False
+                    this_edge = edge
+                    while root_edge_found == False:
+                        for other_edge in self.get_edges():
+                            if other_edge.get_node_ids()[1] == this_edge.get_node_ids()[0]:
+                                parent_edge = other_edge
+                                break
+                        if parent_edge == None:
+                            print('ERROR: The parent edge for edge {} could not be found'.format(this_edge.get_id()))
+                            sys.exit(1)
+                        total_edge_length += parent_edge.get_length()
+                        if parent_edge.get_is_root_edge():
+                            root_edge_found = True
+                            edge.set_length(round(edge.get_length() + max_total_edge_length - total_edge_length,8))
+                        else:
+                            this_edge = parent_edge
+        # First specify the edges for which the parents still need to be identified.
+        for edge in self.get_edges():
+            if edge.get_is_root_edge():
+                edge.set_parent_needs_times(False)
+            else:
+                edge.set_parent_needs_times(True)
+        # Set the times of all edges.
+        for edge in self.get_edges():
+            if edge.get_is_extant() == True:
+                edge.set_termination(0.0)
+                edge.set_origin(edge.get_length())
+                this_edge = edge
+                while this_edge.get_parent_needs_times():
+                    for other_edge in self.get_edges():
+                        if other_edge.get_node_ids()[1] == this_edge.get_node_ids()[0]:
+                            parent_edge = other_edge
+                            break
+                    if parent_edge == None:
+                        print('ERROR: The parent edge for edge {} could not be found'.format(this_edge.get_id()))
+                        sys.exit(1)
+                    parent_edge.set_termination(this_edge.get_origin())
+                    parent_edge.set_origin(this_edge.get_origin() + parent_edge.get_length())
+                    this_edge.set_parent_needs_times = False
+                    this_edge = parent_edge
+
+    def get_origin(self):
+        for edge in self.get_edges():
+            if edge.get_is_root_edge():
+                return edge.get_origin()
+
+    def info(self):
+        info_string = ''
+        info_string += 'Tree'.ljust(20)
+        info_string += '\n'
+        info_string += 'Number of edges:'.ljust(20)
+        info_string += str(self.get_number_of_edges())
+        info_string += '\n'
+        return info_string
+
+
+# The Edge class.
+class Edge(object):
+
+    def __init__(self, id):
+        self.id = id
+        self.node_ids = []
+        self.extant_progeny_ids = []
+        self.origin = None
+        self.termination = None
+        self.parent_needs_times = True
+
+    def get_id(self):
+        return self.id
+
+    def set_node_ids(self, node_ids):
+        self.node_ids = node_ids
+
+    def get_node_ids(self):
+        return self.node_ids
+
+    def get_is_extant(self):
+        if self.node_ids[1][0:12] == 'internalNode':
+            return False
+        else:
+            return True
+
+    def set_length(self, length):
+        self.length = length
+
+    def get_length(self):
+        return self.length
+
+    def set_is_root_edge(self, is_root_edge):
+        self.is_root_edge = is_root_edge
+
+    def get_is_root_edge(self):
+        return self.is_root_edge
+
+    def add_extant_progeny_id(self, extant_progeny_id):
+        self.extant_progeny_ids.append(extant_progeny_id)
+
+    def get_extant_progeny_ids(self):
+        return self.extant_progeny_ids
+
+    def set_termination(self, termination):
+        self.termination = termination
+
+    def get_termination(self):
+        return self.termination
+
+    def set_origin(self, origin):
+        self.origin = origin
+
+    def get_origin(self):
+        return self.origin
+
+    def set_parent_needs_times(self, parent_needs_times):
+        self.parent_needs_times = parent_needs_times
+
+    def get_parent_needs_times(self):
+        return self.parent_needs_times
+
+    def set_dmv(self, dmv):
+        self.dmv = dmv
+
+    def get_pop_size(self, generation_time):
+        return self.dmv * (1000000/float(generation_time))
+
+    def info(self):
+        info_string = ''
+        info_string += 'Edge id:'.ljust(28)
+        info_string += self.id
+        info_string += '\n'
+        info_string += 'Edge node 1 id:'.ljust(28)
+        info_string += self.node_ids[0]
+        info_string += '\n'
+        info_string += 'Edge node 2 id:'.ljust(28)
+        info_string += self.node_ids[1]
+        info_string += '\n'
+        info_string += 'Edge length:'.ljust(28)
+        info_string += str(self.length)
+        info_string += '\n'
+        if self.dmv != None:
+            info_string += 'Edge dmv:'.ljust(28)
+            info_string += str(self.dmv)
+            info_string += '\n'            
+        info_string += 'Edge origin:'.ljust(28)
+        info_string += str(self.origin)
+        info_string += '\n'
+        info_string += 'Edge termination:'.ljust(28)
+        info_string += str(self.termination)
+        info_string += '\n'
+        info_string += 'Edge is extant:'.ljust(28)
+        info_string += str(self.get_is_extant())
+        info_string += '\n'
+        info_string += 'Edge is root edge:'.ljust(28)
+        info_string += str(self.is_root_edge)
+        info_string += '\n'
+        info_string += 'Edge extant progeny ids:'.ljust(28)
+        for extant_progeny_id in self.extant_progeny_ids:
+            info_string += '{}, '.format(extant_progeny_id)
+        info_string = info_string[:-2]
+        info_string += '\n'
+        # info_string += 'Edge parent needs times:'.ljust(20)
+        # info_string += str(self.get_parent_needs_times())
+        # info_string += '\n'
+        return info_string
+
+
+# Define a class for lines of the SVG graph.
+class Line(object):
+
+    def __init__(self, x_start, x_end, y_start, y_end, color, stroke, opacity):
+        self.x_start = x_start
+        self.x_end = x_end
+        self.y_start = y_start
+        self.y_end = y_end
+        self.color = color
+        self.stroke = stroke
+        self.opacity = opacity
+
+    def to_s(self):
+        string = ''
+        string += 'Start:  {},{}\n'.format(self.x_start.round(3),self.y_start.round(3))
+        string += 'End:    {},{}\n'.format(self.x_end.round(3),self.y_end.round(3))
+        string += 'Color:  {}\n'.format(self.color)
+        string += 'Stroke: {}\n'.format(self.stroke)
+        string += '\n'
+        return string
+
+    def to_svg(self):        
+        svg = '<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"{}\" stroke-width=\"{}\" stroke-opacity=\"{}\" />'.format(round(self.x_start,3),round(self.y_start,3),round(self.x_end,3),round(self.y_end,3),self.color,self.stroke,self.opacity)
+        return svg
+
+    def max_y(self):
+        return max(self.y_start,self.y_end)
+
+# Define a class for text of the SVG graph.
+class Text(object):
+
+    def __init__(self, x, y, font, font_size, color, anchor, baseline, rotation, string):
+        self.x = x
+        self.y = y
+        self.font = font
+        self.font_size = font_size
+        self.color = color
+        self.anchor = anchor
+        self.baseline = baseline
+        self.rotation = rotation
+        self.string = string
+
+    def to_svg(self):
+        if self.rotation == None:
+            svg = '<text font-family=\"{}\" font-size=\"{}\" font-weight=\"bold\" fill=\"{}\" text-anchor=\"{}\" alignment-baseline=\"{}\" x=\"{}\" y=\"{}\">{}</text>'.format(self.font, self.font_size, self.color, self.anchor, self.baseline, round(self.x,3), round(self.y,3), self.string)
+        else:
+            svg = '<text font-family=\"{}\" font-size=\"{}\" font-weight=\"bold\" fill=\"{}\" text-anchor=\"{}\" alignment-baseline=\"{}\" transform=\"{}\" x=\"{}\" y=\"{}\">{}</text>'.format(self.font, self.font_size, self.color, self.anchor, self.baseline, self.rotation, round(self.x,3), round(self.y,3), self.string)
+        return svg
+
+# Define class for rectangles of the SVG graph.
+class Rectangle(object):
+    def __init__(self, x, y, width, height, fill, stroke_color, stroke, opacity):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.fill = fill
+        self.stroke_color = stroke_color
+        self.stroke = stroke
+        self.opacity = opacity
+
+    def to_svg(self):
+        svg = '<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" fill=\"{}\" stroke=\"{}\" stroke-width=\"{}\" fill-opacity=\"{}\" stroke-opacity=\"{}\" />'.format(round(self.x,3),round(self.y,3),round(self.width,3),round(self.height,3),self.fill,self.stroke_color,self.stroke,self.opacity,self.opacity)
+        return svg
+
+# Define class for paths of the SVG graph.
+class Path(object):
+    def __init__(self, x, y, fill, color, stroke, opacity, closed):
+        self.x = [x]
+        self.y = [y]
+        self.fill = fill
+        self.color = color
+        self.stroke = stroke
+        self.opacity = opacity
+        self.closed = closed
+
+    def add_point(self, x, y):
+        self.x.append(x)
+        self.y.append(y)
+
+    def to_svg(self):
+        svg = '<path stroke-linecap=\"round\" d=\"M {} {} '.format(round(self.x[0],3),round(self.y[0],3))
+        if len(self.x) > 1:
+            for z in range(1,len(self.x)):
+                svg += 'L {} {} '.format(round(self.x[z],3),round(self.y[z],3))
+        if self.closed:
+            svg += 'z\" fill=\"{}\" stroke=\"{}\" stroke-width=\"{}\" stroke-linejoin=\"round\" fill-opacity=\"{}\" />'.format(self.fill,self.color,self.stroke,self.opacity)
+        else:
+            svg += '\" fill=\"{}\" stroke=\"{}\" stroke-width=\"{}\" stroke-linejoin=\"round\" fill-opacity=\"{}\" />'.format(self.fill,self.color,self.stroke,self.opacity)
+        return svg
+
+
+# Import libraries and make sure we're on python 3.
+import sys
+if sys.version_info[0] < 3:
+    print('Python 3 is needed to run this script!')
+    sys.exit(0)
+import argparse
+import textwrap
+import re
+import os
+import msprime
+import random
+import statistics
+import numpy as np
+import scipy.special as special
+import threading
+from random import randint
+
+# Set the exit flag.
+exitFlag = 0
+
+# Parse the command line arguments.
+parser = argparse.ArgumentParser(
+    formatter_class=argparse.RawDescriptionHelpFormatter,
+    description=textwrap.dedent('''\
+      %(prog)s
+    ------------------------------------------------------------
+      c-genie estimates the sizes of coalescent genes
+      (termed \"c-genes\" by Doyle 1995) and single-topology
+      tracts (genomic regions sharing the same topology)
+      given a species tree and estimates for the population
+      size and the recombination rate). The resulting
+      estimates are based on the assumption that the
+      phylogeny is in fact the true species tree, that the
+      population size is constant and equal for all species,
+      and that the recombination rate is homogeneous across
+      the genome or according to a provided recombination map.
+
+      Run c-genie e.g. with
+      ./c-genie primates.tre primates -n 10000 -g 3 -r 2e-8 -l 1000000
+    '''))
+parser.add_argument(
+    '-v', '--version',
+    action='version',
+    version='%(prog)s 0.1'
+    )
+parser.add_argument(
+    '-n',
+    nargs=1,
+    type=float,
+    default=[10000.0],
+    dest='pop_size',
+    help='effective population size (default: 10000)'
+        )
+parser.add_argument(
+    '-g',
+    nargs=1,
+    type=float,
+    default=[3.0],
+    dest='gen_time',
+    help='generation time in years (default: 3.0)'
+        )
+parser.add_argument(
+    '-r',
+    nargs=1,
+    type=float,
+    default=[2e-8],
+    dest='rec_rate',
+    help='recombination rate per year (default: 2e-8)'
+        )
+parser.add_argument(
+    '-m',
+    nargs=1,
+    type=str,
+    dest='rec_map',
+    help='name of a file with a recombination map'
+        )
+parser.add_argument(
+    '-l',
+    nargs=1,
+    type=int,
+    default=[1000000],
+    dest='chr_length',
+    help='chromosome length in bp (default: 1000000)'
+        )
+parser.add_argument(
+    '-t',
+    nargs=1,
+    type=int,
+    default=[10000],
+    dest='n_c_genes',
+    help='target number of c-genes (default: 10000)'
+        )
+group = parser.add_argument_group('optional arguments for generating alignments')
+
+group.add_argument(
+    '-a',
+    nargs=1,
+    type=int,
+    default=[0],
+    dest='n_alignments',
+    help='number of alignments to generate for "gene tree" reconstruction (default: 0)'
+        )
+group.add_argument(
+    '-al',
+    nargs=1,
+    type=int,
+    default=[1000],
+    dest='aln_length',
+    help='Length of each generated alignment (only used with option "-a") (default: 1000)'
+        )
+group.add_argument(
+    '-x',
+    action='store_true',
+    dest='exclude',
+    help='do not run c-gene analysis; only output alignments for "gene tree" reconstruction (default: off)'
+        )
+group.add_argument(
+    '-u',
+    nargs=1,
+    type=float,
+    default=[2e-8],
+    dest='mut_rate',
+    help='the per-generation mutation rate; used to generate the alignments for "gene tree" reconstruction (default: 2e-8)'
+        )
+group.add_argument(
+    '-p',
+    action='store_true',
+    dest='parsimony_score',
+    help='calculate parsimony-scores for all alignments (requires DendroPy and is computationally demanding)'
+        )
+parser.add_argument(
+    '-c',
+    nargs=1,
+    type=int,
+    default=[1],
+    dest='n_cpus',
+    help='number of cpus (default: 1)'
+        )
+parser.add_argument(
+    'infile',
+    nargs='?',
+    type=argparse.FileType('r'),
+    default='-',
+    help='name of the input file with a time-calibrated tree in newick format, with branch lengths in units of myr'
+    )
+parser.add_argument(
+    'prefix',
+    nargs=1,
+    type=str,
+    default=["out"],
+    help='prefix for output file names (default: out)'
+    )
+args = parser.parse_args()
+pop_size = args.pop_size[0]
+gen_time = args.gen_time[0]
+rec_rate = args.rec_rate[0]
+rec_map = args.rec_map
+if rec_map != None:
+    rec_map = rec_map[0]
+chr_length = args.chr_length[0]
+target_n_c_genes = args.n_c_genes[0]
+n_cpus = args.n_cpus[0]
+infile = args.infile
+html_outfile_name = args.prefix[0] + '.html'
+phylip_outfile_name = args.prefix[0] + '.phy'
+n_alignments = args.n_alignments[0]
+exclude_c_genes = False
+calculate_parsimony_scores = False
+if n_alignments > 0:
+    phylip_outfile_names = []
+    for i in range(0, n_alignments):
+        phylip_outfile_names.append(args.prefix[0] + '_' + str(i+1).zfill(len(str(n_alignments))) + '.phy')
+    alignment_length = args.aln_length[0]
+    mut_rate = args.mut_rate[0]
+    exclude_c_genes = args.exclude
+    calculate_parsimony_scores = args.parsimony_score
+    # alignment_file = open(phylip_outfile_name,'w')
+if infile.isatty():
+    print('No input file specified, and no input piped through stdin!')
+    print('Use \'-h\' to see available options.')
+    sys.exit(0)
+
+# Read the recombination map file if one has been specified.
+if rec_map != None:
+    if os.path.isfile(rec_map):
+        rec_map_file = open(rec_map,'r')
+        rec_map_lines = rec_map_file.readlines()
+        rec_map_file.close()
+        chr_length = int(rec_map_lines[-1].split()[1])
+    else:
+        print('ERROR: The recombination map file {} could not be found!'.format(rec_map))
+        sys.exit(1)
+    
+# Provide feedback.
+print('')
+print('  {}'.format(os.path.basename(__file__)))
+print('------------------------------------------------------------')
+print('')
+print('  Input:')
+print('    Tree input file name: {}'.format(infile.name))
+print('    HTML output file name: {}'.format(html_outfile_name))
+if n_alignments > 0:
+    print('    Alignment output file names: {}'.format(args.prefix[0] + '_*.phy'))
+print('    Population size: {}'.format(pop_size))
+print('    Generation time: {} years'.format(gen_time))
+if rec_map == None:
+    print('    Recombination rate: {} per generation'.format(rec_rate))
+    if exclude_c_genes == False:
+        print('    Chromosome length: {}'.format(chr_length))
+else:
+    print('    Recombination map file name: {}'.format(rec_map))
+    print('    Chromosome length (from map): {}'.format(chr_length))
+if exclude_c_genes == False:
+    if n_cpus > 1:
+        print('    Number of cpus: 1 (threading only possible for c-gene analysis)')
+    else:
+        print('    Number of cpus: {}'.format(n_cpus))
+else:
+    print('    Number of cpus: {}'.format(n_cpus))
+if n_alignments > 0:
+    print('   ')
+    print('    Number of alignments to generate for "gene tree" reconstruction: {}'.format(n_alignments))
+    print('    Length of alignments generated for "gene tree" reconstruction: {}'.format(alignment_length))
+    print('    Mutation rate used to generate alignments for "gene tree" reconstruction: {} per generation'.format(mut_rate))
+    if exclude_c_genes:
+        print('      -> skipping c-gene analysis; only generating alignments for "gene tree" reconstruction.')
+    else:
+        print('    Target number of c-genes: {}'.format(target_n_c_genes))
+    if calculate_parsimony_scores:
+        print('      -> calculating parsimony-scores for all alignments with DendroPy.')
+else:
+    print('    Target number of c-genes: {}'.format(target_n_c_genes))
+print('')
+
+# Read the input file.
+tree = None
+star_c_genie_mode = False
+inlines = infile.readlines()
+if inlines[0][0:6].lower() == '#nexus':
+    # Assume the input is in nexus format. Maximally one tree string is read.
+    in_tree = False
+    for line in inlines:
+        if line.strip().lower() == 'begin trees;':
+            in_tree = True
+        elif line.strip().lower() == 'end;':
+            in_tree = False
+        elif in_tree and line.strip() is not '':
+            clean_line = line.strip()
+            if clean_line[0:4].lower() == "tree":
+                if '[' in clean_line and ']' in clean_line:
+                    if "dmv=" in clean_line:
+                        # Turn on star-c-genie mode
+                        star_c_genie_mode = True
+                        # Remove all annotation except for dmv.
+                        tree_string_raw = ''
+                        in_comment = False
+                        in_dmv = False
+                        for x in range(len(clean_line)):
+                            if clean_line[x] == '[':
+                                in_comment = True
+                                tree_string_raw += clean_line[x]
+                            elif clean_line[x] == ']':
+                                in_comment = False
+                                tree_string_raw += clean_line[x]
+                            elif in_comment:
+                                if clean_line[x-1] == "[" and clean_line[x] == "&":
+                                    tree_string_raw += "&"
+                                if clean_line[x-5:x] == "dmv={":
+                                    in_dmv = True
+                                    tree_string_raw += "dmv={"
+                                if in_dmv:
+                                    tree_string_raw += clean_line[x]
+                                if clean_line[x] == "}":
+                                    in_dmv = False
+                            else:
+                                tree_string_raw += clean_line[x]
+                    else:
+                        # Remove all annotation.
+                        tree_string_raw = ''
+                        in_comment = False
+                        for letter in clean_line:
+                            if letter == '[':
+                                in_comment = True
+                            elif letter == ']':
+                                in_comment = False
+                            elif in_comment == False:
+                                tree_string_raw += letter
+                if star_c_genie_mode:
+                    tree_patterns = re.search('(\(.+\))\[\&dmv=\{([\d\.]+?)\}\]',tree_string_raw)
+                    tree_string = tree_patterns.group(1)
+                    root_pop_size = float(tree_patterns.group(2)) * (1000000/gen_time)
+                else:
+                    tree_patterns = re.search('\(.+\)',tree_string_raw)
+                    tree_string = tree_patterns.group(0)
+                tree = Tree(tree_string)
+                break
+else:
+    # Test if the input is in newick format.
+    if inlines[0][0] == '(':
+        if inlines[0].count('(') != inlines[0].count(')'):
+            print('ERROR: The number of opening and closing parentheses differ in the tree string!')
+            sys.exit(1)
+        else:
+            tree_string_raw = inlines[0]
+            tree_patterns = re.search('\(.+\)',tree_string_raw)
+            tree_string = tree_patterns.group(0)
+            tree = Tree(tree_string)
+    else:
+        print('ERROR: Unexpected tree format in file {}'.format(infile.name))
+
+# Feedback.
+print('  Analysis:')
+print('    Parsing the tree input file...', end='', flush=True)
+
+# Make sure a tree is found.
+if tree is None:
+    print('\nERROR: No tree could be found in file {}'.format(infile.name))
+    sys.exit(1)
+
+# Parse the newick tree string.
+if star_c_genie_mode:
+    tree.parse_extended_newick_string()
+else:
+    tree.parse_newick_string()
+
+# Set the extant progeny ids for each branch.
+tree.set_extant_progeny_ids()
+
+# Set the origin and termination times of all branches.
+tree.set_times()
+
+# Get the age of the tree.
+tree_origin = tree.get_origin()
+
+# Get a list of species Ids.
+species_ids = []
+terminal_pop_sizes = []
+for edge in tree.get_edges():
+    if edge.get_is_extant():
+        species_ids.append(edge.get_node_ids()[1])
+        if star_c_genie_mode:
+            terminal_pop_sizes.append(edge.get_pop_size(gen_time))
+        else:
+            terminal_pop_sizes.append(pop_size)
+lists_are_sorted = False
+while lists_are_sorted == False:
+    lists_are_sorted = True
+    for x in range(len(species_ids)-1):
+        if species_ids[x] > species_ids[x+1]:
+            species_ids[x], species_ids[x+1] = species_ids[x+1], species_ids[x]
+            terminal_pop_sizes[x], terminal_pop_sizes[x+1] = terminal_pop_sizes[x+1], terminal_pop_sizes[x]
+            lists_are_sorted = False
+            break
+
+# Determine at which time which populations should merge.
+indices1 = []
+indices2 = []
+internal_pop_sizes = []
+divergence_times = []
+for edge in tree.get_edges():
+    if edge.get_is_extant() == False:
+        d1_species = []
+        d2_species = []
+        for other_edge in tree.get_edges():
+            if edge.get_node_ids()[1] == other_edge.get_node_ids()[0]:
+                if d1_species == []:
+                    d1_species = other_edge.get_extant_progeny_ids()
+                elif d2_species == []:
+                    d2_species = other_edge.get_extant_progeny_ids()
+                    break
+        d1_species.sort()
+        d2_species.sort()
+        index1 = species_ids.index(d1_species[0])
+        index2 = species_ids.index(d2_species[0])
+        if index1 > index2:
+            index1, index2 = index2, index1
+        indices1.append(index1)
+        indices2.append(index2)
+        divergence_times.append(edge.get_termination())
+        if star_c_genie_mode:
+            internal_pop_sizes.append(edge.get_pop_size(gen_time))
+        else:
+            internal_pop_sizes.append(pop_size)
+# Do the same for the root.
+d1_species = []
+d2_species = []
+for edge in tree.get_edges():
+    if edge.get_is_root_edge():
+        if d1_species == []:
+            d1_species = edge.get_extant_progeny_ids()
+        elif d2_species == []:
+            d2_species = edge.get_extant_progeny_ids()
+            divergence_times.append(edge.get_origin())
+            if star_c_genie_mode:
+                internal_pop_sizes.append(root_pop_size)
+            else:
+                internal_pop_sizes.append(pop_size)
+            break
+d1_species.sort()
+d2_species.sort()
+index1 = species_ids.index(d1_species[0])
+index2 = species_ids.index(d2_species[0])
+if index1 > index2:
+    index1, index2 = index2, index1
+indices1.append(index1)
+indices2.append(index2)
+
+# Sort the arrays indices1, indices2, divergence_times, and population sizes according to divergence_time.
+lists_are_sorted = False
+while lists_are_sorted == False:
+    lists_are_sorted = True
+    for x in range(len(indices1)-1):
+        if divergence_times[x] > divergence_times[x+1]:
+            indices1[x], indices1[x+1] = indices1[x+1], indices1[x]
+            indices2[x], indices2[x+1] = indices2[x+1], indices2[x]
+            divergence_times[x], divergence_times[x+1] = divergence_times[x+1], divergence_times[x]
+            internal_pop_sizes[x], internal_pop_sizes[x+1] = internal_pop_sizes[x+1], internal_pop_sizes[x]
+            lists_are_sorted = False
+            break
+
+# Feedback.
+if star_c_genie_mode:
+    print(' done.')
+    print('      -> newick string annotation will be used to inform per-branch population sizes.')
+else:
+    print(' done.')
+
+# Feedback.
+print('    Preparing msprime analyses...', end='', flush=True)
+
+# Define the tree for msprime.
+population_configurations = []
+if star_c_genie_mode:
+    for x in range(tree.get_number_of_extant_edges()):
+        population_configurations.append(msprime.PopulationConfiguration(sample_size=1, initial_size=terminal_pop_sizes[x]))
+    demographic_events = []
+    for x in range(len(indices1)-1):
+        demographic_events.append(msprime.MassMigration(time=(divergence_times[x]*1000000)/gen_time, source=indices2[x], destination=indices1[x], proportion=1.0))
+        demographic_events.append(msprime.PopulationParametersChange(time=(divergence_times[x]*1000000)/gen_time, initial_size=internal_pop_sizes[x], population_id=indices1[x]))
+    demographic_events.append(msprime.MassMigration(time=(divergence_times[-1]*1000000)/gen_time, source=indices2[-1], destination=indices1[-1], proportion=1.0))
+    demographic_events.append(msprime.PopulationParametersChange(time=(divergence_times[-1]*1000000)/gen_time, initial_size=internal_pop_sizes[-1], population_id=indices1[-1]))
+else:
+    for _ in range(tree.get_number_of_extant_edges()):
+        population_configurations.append(msprime.PopulationConfiguration(sample_size=1, initial_size=pop_size))
+    demographic_events = []
+    for x in range(len(indices1)-1):
+        demographic_events.append(msprime.MassMigration(time=(divergence_times[x]*1000000)/gen_time, source=indices2[x], destination=indices1[x], proportion=1.0))
+    demographic_events.append(msprime.MassMigration(time=(divergence_times[-1]*1000000)/gen_time, source=indices2[-1], destination=indices1[-1], proportion=1.0))
+
+# Feedback.
+print(' done.')
+
+if exclude_c_genes == False:
+    # Feedback.
+    print('    Running msprime...', end='', flush=True)
+
+    # Run msprime to simulate gene trees and recombination.
+    tree_sequences = []
+    n_chr_simulated = 0
+    n_threads = n_cpus
+    while len(tree_sequences) < target_n_c_genes:
+        if n_threads > 1:
+            # Set up a class of threads for msprime runs with a recombination map.
+            class msprime_thread_rec_map (threading.Thread):
+                def __init__(self, threadID, name, population_configurations, demographic_events, rec_map):
+                    threading.Thread.__init__(self)
+                    self.threadID = threadID
+                    self.name = name
+                    self.population_configurations = population_configurations
+                    self.demographic_events = demographic_events
+                    self.rec_map = rec_map
+                def run(self):
+                    self.res = run_msprime_rec_map(self.name, self.population_configurations, self.demographic_events, self.rec_map)
+                def get_res(self):
+                    return self.res
+
+            # Set up a class of threads for msprime runs with a fixed recombination rate.
+            class msprime_thread_rec_rate (threading.Thread):
+                def __init__(self, threadID, name, population_configurations, demographic_events, chr_length, rec_rate):
+                    threading.Thread.__init__(self)
+                    self.threadID = threadID
+                    self.name = name
+                    self.population_configurations = population_configurations
+                    self.demographic_events = demographic_events
+                    self.chr_length = chr_length
+                    self.rec_rate = rec_rate
+                def run(self):
+                    self.res = run_msprime_rec_rate(self.name, self.population_configurations, self.demographic_events, self.chr_length, self.rec_rate)
+                def get_res(self):
+                    return self.res
+
+            # Set up a definition for thread runs with a recombination map.
+            def run_msprime_rec_map(threadName, population_configurations, demographic_events, rec_map):
+                if exitFlag:
+                    threadName.exit()
+                new_tree_sequence_obj = msprime.simulate(population_configurations=population_configurations, demographic_events=demographic_events, recombination_map=msprime.RecombinationMap.read_hapmap(rec_map), random_seed=random.randint(1, 10000000))
+                return new_tree_sequence_obj
+
+            # Set up a definition for thread runs with a fixed recombination rate.
+            def run_msprime_rec_rate(threadName, population_configurations, demographic_events, chr_length, rec_rate):
+                if exitFlag:
+                    threadName.exit()
+                new_tree_sequence_obj = msprime.simulate(population_configurations=population_configurations, demographic_events=demographic_events, length=chr_length, recombination_rate=rec_rate, random_seed=random.randint(1, 10000000))
+                return new_tree_sequence_obj
+
+            # Create new threads.
+            n_chr_simulated += n_threads
+            threads = []
+            for x in range(n_threads):
+                if rec_map != None:
+                    threads.append(msprime_thread_rec_map(x, 'Thread-{}'.format(x), population_configurations, demographic_events, rec_map))
+                else:
+                    threads.append(msprime_thread_rec_rate(x, 'Thread-{}'.format(x), population_configurations, demographic_events, chr_length, rec_rate))
+
+            # Start new threads.
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+
+            # Collect results from threads.
+            res_array = []
+            for thread in threads:
+                new_tree_sequence_obj = thread.get_res()
+                new_tree_sequence_list = list(new_tree_sequence_obj.newick_trees())
+                for i in new_tree_sequence_list:
+                    tree_sequences.append(i)
+
+        else:
+            n_chr_simulated += 1
+            if rec_map != None:
+                new_tree_sequence_obj = msprime.simulate(population_configurations=population_configurations, demographic_events=demographic_events, recombination_map=msprime.RecombinationMap.read_hapmap(rec_map), random_seed=random.randint(1, 10000000))
+            else:
+                new_tree_sequence_obj = msprime.simulate(population_configurations=population_configurations, demographic_events=demographic_events, length=chr_length, recombination_rate=rec_rate, random_seed=random.randint(1, 10000000))
+            for tree in new_tree_sequence_obj.trees():
+                this_tree_to_append = []
+                this_tree_to_append.append(tree.interval[1]-tree.interval[0])
+                this_tree_to_append.append(tree.newick())
+                tree_sequences.append(this_tree_to_append)
+
+    # Feedback.
+    print(' done.')
+
+if exclude_c_genes == False:
+    # Feedback.
+    print('    Analyzing msprime output...', end='', flush=True)
+    
+    # Analyse msprime results.
+    c_gene_sizes = []
+    tract_sizes = []
+    tree_strings = []
+    topology_strings = []
+    for length_and_tree in tree_sequences:
+        length = int(length_and_tree[0])
+        tree_string = length_and_tree[1].rstrip(';')
+        topology_string = re.sub(r':\d+\.\d+','', tree_string)
+        c_gene_sizes.append(length)
+        tree_strings.append(tree_string)
+        topology_strings.append(topology_string)
+    
+    # Compare each tree with the one before to identify topology breakpoints.
+    previous_topology_string = topology_strings[0]
+    previous_topology_length = c_gene_sizes[0]
+    num_topology_changes = 0
+    for x in range(1, len(topology_strings)):
+        # Only parse trees if the topology strings differ.
+        if topology_strings[x] != previous_topology_string:
+            # Make sure the two trees are really different.
+            tree1 = Tree(tree_strings[x-1])
+            tree1.parse_newick_string()
+            tree1.set_extant_progeny_ids()
+            tree2 = Tree(tree_strings[x])
+            tree2.parse_newick_string()
+            tree2.set_extant_progeny_ids()
+            clades1 = []
+            for edge in tree1.get_edges():
+                extant_progeny_ids = edge.get_extant_progeny_ids()
+                extant_progeny_ids.sort()
+                if len(extant_progeny_ids) > 1:
+                    clades1.append(extant_progeny_ids)
+            clades1.sort()
+            clades2 = []
+            for edge in tree2.get_edges():
+                extant_progeny_ids = edge.get_extant_progeny_ids()
+                extant_progeny_ids.sort()
+                if len(extant_progeny_ids) > 1:
+                    clades2.append(extant_progeny_ids)
+            clades2.sort()
+            if clades1 != clades2:
+                num_topology_changes = num_topology_changes + 1
+                tract_sizes.append(previous_topology_length)
+                previous_topology_length = c_gene_sizes[x]
+            else:
+                previous_topology_length += c_gene_sizes[x]
+        else:
+            previous_topology_length += c_gene_sizes[x]
+        previous_topology_string = topology_strings[x]
+    
+    #if there have not been any topology changes, set the tract lengths to equal the lengths of the simulated chromosomes.
+    if num_topology_changes == 0:
+        tract_sizes = [chr_length for x in range(n_chr_simulated)]
+    
+    
+    # Remove the last c-gene size as it is truncated not by recombination, but by the chromosome end.
+    c_gene_sizes = c_gene_sizes[:-1]
+    
+    # Get the total length of c-genes and tracts.
+    c_gene_sizes_sum = sum(c_gene_sizes)
+    tract_sizes_sum = sum(tract_sizes)
+    
+    
+    # Feedback.
+    print(' done.')
+
+
+# Simulate "gene tree" sequence alignments.
+if n_alignments > 0:
+    ns_variants = []
+    ns_c_gene_break_points = []
+    ns_topology_break_points = []
+    ns_topology_break_points_with_variants = []
+    ns_topology_break_points_with_pi_sites = []
+    if calculate_parsimony_scores == True:
+        parsimony_scores = []
+    # Feedback.
+    print('    Simulating gene sequence alignments for "gene tree" estimation...', end='', flush=True)
+    DNA_alphabet = ['A','C','G','T']
+    aln_rec_rates = []
+
+    # Load the dendropy library if parsimony scores should be calculated.
+    if calculate_parsimony_scores == True:
+        import dendropy
+
+    if rec_map != None:
+        if os.path.isfile(rec_map):
+            rec_map_file = open(rec_map,'r')
+            rec_map_lines = rec_map_file.readlines()
+            rec_map_file.close()
+            chr_length = int(rec_map_lines[-1].split()[1])
+            for i in range(0, n_alignments):
+                sampled_pos=random.randrange(chr_length)
+                aln_rec_rate = None
+                curr_pos = 0
+                curr_rec_rate = 0
+                for rec_map_line in rec_map_lines[1:]:
+                    prev_pos = curr_pos
+                    prev_rec_rate = curr_rec_rate
+                    curr_pos = int(rec_map_line.split()[1])
+                    curr_rec_rate = float(rec_map_line.split()[2])/100000000.0
+                    if curr_pos > sampled_pos:
+                        aln_rec_rate = prev_rec_rate
+                        break
+                aln_rec_rates.append(aln_rec_rate)
+
+        else:
+            print('ERROR: The recombination map file {} could not be found!'.format(rec_map))
+            sys.exit(1)
+
+    else:
+        for i in range(0, n_alignments):
+            aln_rec_rates.append(rec_rate)
+    for i in range(0, n_alignments):
+        # Run msprime with the specified model and alignment length.
+        new_tree_sequence_obj = msprime.simulate(population_configurations=population_configurations, demographic_events=demographic_events, mutation_rate=mut_rate, length=alignment_length, recombination_rate=aln_rec_rates[i], random_seed=random.randint(1, 10000000))
+
+        # Find out how many c-gene breakpoints and topology breakpoints the alignment includes.
+        # Collect the gene tree information.
+        tree_sequences = []
+        for tree in new_tree_sequence_obj.trees():
+            this_tree_to_append = []
+            this_tree_to_append.append(tree.interval[1]-tree.interval[0])
+            this_tree_to_append.append(tree.newick())
+            tree_sequences.append(this_tree_to_append)
+        # Reduce tree information to topology information and count the number of c-genes.
+        aln_c_gene_sizes = []
+        aln_tract_sizes = []
+        aln_tree_strings = []
+        aln_topology_strings = []
+        n_c_gene_break_points = -1
+        for length_and_tree in tree_sequences:
+            n_c_gene_break_points += 1
+            length = int(length_and_tree[0])
+            aln_c_gene_sizes.append(length)
+            tree_string = length_and_tree[1].rstrip(';')
+            aln_tree_strings.append(tree_string)
+            topology_string = re.sub(r':\d+\.\d+','', tree_string)
+            aln_topology_strings.append(topology_string)
+        ns_c_gene_break_points.append(n_c_gene_break_points)
+        pseudo_unique_aln_topology_strings = [aln_topology_strings[0]]
+        # Count the number of topology breakpoints.
+        n_topology_break_points = 0
+        previous_topology_string = aln_topology_strings[0]
+        previous_topology_length = aln_c_gene_sizes[0]
+        for x in range(1, len(aln_topology_strings)):
+            # Only parse trees if the topology strings differ.
+            if aln_topology_strings[x] != previous_topology_string:
+                # Make sure the two trees are really different.
+                tree1 = Tree(aln_tree_strings[x-1])
+                tree1.parse_newick_string()
+                tree1.set_extant_progeny_ids()
+                tree2 = Tree(aln_tree_strings[x])
+                tree2.parse_newick_string()
+                tree2.set_extant_progeny_ids()
+                clades1 = []
+                for edge in tree1.get_edges():
+                    extant_progeny_ids = edge.get_extant_progeny_ids()
+                    extant_progeny_ids.sort()
+                    if len(extant_progeny_ids) > 1:
+                        clades1.append(extant_progeny_ids)
+                clades1.sort()
+                clades2 = []
+                for edge in tree2.get_edges():
+                    extant_progeny_ids = edge.get_extant_progeny_ids()
+                    extant_progeny_ids.sort()
+                    if len(extant_progeny_ids) > 1:
+                        clades2.append(extant_progeny_ids)
+                clades2.sort()
+                if clades1 != clades2:
+                    n_topology_break_points = n_topology_break_points + 1
+                    aln_tract_sizes.append(previous_topology_length)
+                    previous_topology_length = aln_c_gene_sizes[x]
+                    if aln_topology_strings[x] not in pseudo_unique_aln_topology_strings:
+                        pseudo_unique_aln_topology_strings.append(aln_topology_strings[x])
+                else:
+                    previous_topology_length += aln_c_gene_sizes[x]
+            else:
+                previous_topology_length += aln_c_gene_sizes[x]
+            previous_topology_string = aln_topology_strings[x]
+        ns_topology_break_points.append(n_topology_break_points)
+        # Determine the topology breakpoint positions.
+        topology_breakpoint_positions = [0]
+        aln_tract_size_sum = 0
+        for aln_tract_size in aln_tract_sizes:
+            aln_tract_size_sum += aln_tract_size
+            topology_breakpoint_positions.append(aln_tract_size_sum)
+        topology_breakpoint_positions.append(alignment_length)
+
+        # Begin preparing the sequence alignments.
+        # Initiate an alignment as a list of strings.
+        alignment = []
+        for sp in range(0,len(species_ids)):
+            alignment.append("")
+
+        n_variants = 0
+        in_gene_position = 0
+        for variant in new_tree_sequence_obj.variants():
+            vp = int(variant.site.position)
+            if vp > in_gene_position:  # exclude multiple mutations at the same site (i.e. at the moment we generate only biallelic sites) TO DO: make multiallelics in these cases
+                # print("vp: " + str(vp))
+                # Fill in invariable sites
+                for bp in range(in_gene_position,vp-1):
+                    r = randint(0, 3)
+                    thisBase = DNA_alphabet[r]
+                    for sp in range(0,len(species_ids)):
+                        alignment[sp] =  alignment[sp] + thisBase
+                
+                in_gene_position = vp
+                n_variants = n_variants + 1
+                ra = randint(0, 3)
+                ancestralBase = DNA_alphabet[ra]
+                derivedPossibilities = DNA_alphabet[:ra] +  DNA_alphabet[ra+1:]
+                rd = randint(0, 2)
+                derivedBase = derivedPossibilities[rd]
+                ancestralDerivedDNA = [ancestralBase,derivedBase]
+                for sp in range(0,len(species_ids)):
+                    alignment[sp] =  alignment[sp] + ancestralDerivedDNA[variant.genotypes[sp]]
+        ns_variants.append(n_variants)
+
+        # Fill in invariable sites at the end of alignment
+        for bp in range(in_gene_position,alignment_length):
+            r = randint(0, 3)
+            thisBase = DNA_alphabet[r]
+            for sp in range(0,len(species_ids)):
+                alignment[sp] =  alignment[sp] + thisBase  
+
+        # Calculate how many topology tracts do not have variants.
+        n_aln_tracts_without_variants = 0
+        n_aln_tracts_without_pi_sites = 0
+        for x in range(len(topology_breakpoint_positions)-1):
+            variant_within_topology_tract = False
+            pi_site_within_topology_tract = False
+            for variant in new_tree_sequence_obj.variants():
+                vp = int(variant.site.position)
+                if vp >= topology_breakpoint_positions[x] and vp < topology_breakpoint_positions[x+1]:
+                    variant_within_topology_tract = True
+                    if min(list(variant.genotypes).count(0),list(variant.genotypes).count(1)) > 1:
+                        pi_site_within_topology_tract = True
+                        break
+            if variant_within_topology_tract == False:
+                n_aln_tracts_without_variants += 1
+            if pi_site_within_topology_tract == False:
+                n_aln_tracts_without_pi_sites += 1
+        ns_topology_break_points_with_variants.append(ns_topology_break_points[i] - n_aln_tracts_without_variants)
+        ns_topology_break_points_with_pi_sites.append(ns_topology_break_points[i] - n_aln_tracts_without_pi_sites)
+
+        #print("alignment_length: " + str(alignment_length))
+        #print("len(alignment[0]): " + str(len(alignment[0])))
+        #print("len(alignment[1]): " + str(len(alignment[1])))
+        alignment_file = open(phylip_outfile_names[i],'w')
+        alignment_file.write(str(len(species_ids))+" "+str(alignment_length)+"\n")
+        unlabelled_alignment_dict = {}
+        max_species_id_length = 8
+        for sp in range(0,len(species_ids)):
+            if len(str(sp)) > max_species_id_length:
+                max_species_id_length = len(str(sp))
+        for sp in range(0,len(species_ids)):
+            alignment_file.write(species_ids[sp].ljust(max_species_id_length+2) + alignment[sp]+"\n")
+            unlabelled_alignment_dict[str(sp+1)] = alignment[sp]
+            #print(species_ids[sp]+'\t'+alignment[sp])
+        alignment_file.write("\n")
+        alignment_file.close()
+
+        if calculate_parsimony_scores == True:
+            # Use dendropy to calculate the minimal parsimony score among the gene's tree topologies.
+            dendropy_taxon_namespace = dendropy.TaxonNamespace()
+            dendropy_alignment = dendropy.DnaCharacterMatrix.from_dict(unlabelled_alignment_dict, taxon_namespace=dendropy_taxon_namespace)
+            parsimony_scores_this_alignment = []
+            for pseudo_unique_aln_topology_string in pseudo_unique_aln_topology_strings:
+                dendropy_topology = dendropy.Tree.get(data=pseudo_unique_aln_topology_string + ";", schema="newick", taxon_namespace=dendropy_taxon_namespace)
+                parsimony_scores_this_alignment.append(dendropy.calculate.treescore.parsimony_score(dendropy_topology, dendropy_alignment))
+            parsimony_scores.append(min(parsimony_scores_this_alignment))
+
+        # More feedback
+        if i % 100 == 0:
+            print('.', end='', flush=True)
+
+    # alignment_file.close()
+    # phymlCommand = 'phyml -i ' + os.path.basename(alignment_file.name) + '-n ' + str(n_alignments) + '-b 0 -m JC69 -f e --no_memory_check --r_seed 100 --run_id phymlTest'
+    #call(phymlCommand)
+
+    # Feedback.
+    print(' done.')
+
+
+# Only prepare c-gene and topology-tract output if requested.
+if exclude_c_genes == False:
+
+    # Feedback.
+    print('    Preparing c-gene plots...', end='', flush=True)
+
+    # Determine the maximum c-gene size to plot in c-gene plot 1.
+    c_gene_sizes_median = np.median(c_gene_sizes)
+    if c_gene_sizes_median < 1:
+        c_gene_plot1_max_size = 5
+    elif c_gene_sizes_median < 2:
+        c_gene_plot1_max_size = 10
+    elif c_gene_sizes_median < 5:
+        c_gene_plot1_max_size = 20
+    elif c_gene_sizes_median < 10:
+        c_gene_plot1_max_size = 50
+    elif c_gene_sizes_median < 20:
+        c_gene_plot1_max_size = 100
+    elif c_gene_sizes_median < 50:
+        c_gene_plot1_max_size = 200
+    elif c_gene_sizes_median < 100:
+        c_gene_plot1_max_size = 500
+    elif c_gene_sizes_median < 200:
+        c_gene_plot1_max_size = 1000
+    elif c_gene_sizes_median < 500:
+        c_gene_plot1_max_size = 2000
+    elif c_gene_sizes_median < 1000:
+        c_gene_plot1_max_size = 5000
+    elif c_gene_sizes_median < 2000:
+        c_gene_plot1_max_size = 10000
+    elif c_gene_sizes_median < 5000:
+        c_gene_plot1_max_size = 20000
+    elif c_gene_sizes_median < 10000:
+        c_gene_plot1_max_size = 50000
+    elif c_gene_sizes_median < 20000:
+        c_gene_plot1_max_size = 100000
+    elif c_gene_sizes_median < 50000:
+        c_gene_plot1_max_size = 200000
+    elif c_gene_sizes_median < 100000:
+        c_gene_plot1_max_size = 500000
+    elif c_gene_sizes_median < 200000:
+        c_gene_plot1_max_size = 1000000
+    elif c_gene_sizes_median < 500000:
+        c_gene_plot1_max_size = 2000000
+    elif c_gene_sizes_median < 1000000:
+        c_gene_plot1_max_size = 5000000
+    elif c_gene_sizes_median < 2000000:
+        c_gene_plot1_max_size = 10000000
+    elif c_gene_sizes_median < 5000000:
+        c_gene_plot1_max_size = 20000000
+    else:
+        c_gene_plot1_max_size = 50000000
+
+    # Determine the size values of bin centers.
+    c_gene_plot1_bin_number = 25
+    c_gene_plot1_bin_centers = []
+    c_gene_plot1_bin_width = c_gene_plot1_max_size/float(c_gene_plot1_bin_number)
+    for x in range(c_gene_plot1_bin_number):
+        c_gene_plot1_bin_centers.append((c_gene_plot1_bin_width/2.0)+(x*c_gene_plot1_bin_width))
+
+    # Fill the bins with counts of c-genes.
+    c_gene_plot1_bin_counts = []
+    for x in range(c_gene_plot1_bin_number):
+        c_gene_plot1_bin_counts.append(0)
+    for s in c_gene_sizes:
+        for x in range(c_gene_plot1_bin_number):
+            if s < c_gene_plot1_bin_centers[x]+(c_gene_plot1_bin_width/2.0) and s >= c_gene_plot1_bin_centers[x]-(c_gene_plot1_bin_width/2.0):
+                c_gene_plot1_bin_counts[x] += 1
+                break
+
+    # Get the proportions of the genome covered by c-genes of a given size or larger.
+    sorted_c_gene_sizes = sorted(c_gene_sizes)
+    proportions_covered_by_c_genes = []
+    smaller_c_gene_sizes_sum = 0
+    for sorted_c_gene_size in sorted_c_gene_sizes:
+        smaller_c_gene_sizes_sum += sorted_c_gene_size
+        proportions_covered_by_c_genes.append((c_gene_sizes_sum-smaller_c_gene_sizes_sum)/c_gene_sizes_sum)
+
+    # Determine the maximum c-gene count per bin to plot.
+    if max(c_gene_plot1_bin_counts) < 10:
+        c_gene_plot1_max_count = 10
+    elif max(c_gene_plot1_bin_counts) < 20:
+        c_gene_plot1_max_count = (np.ceil(max(c_gene_plot1_bin_counts)/2))*2
+    elif max(c_gene_plot1_bin_counts) < 50:
+        c_gene_plot1_max_count = (np.ceil(max(c_gene_plot1_bin_counts)/5))*5
+    elif max(c_gene_plot1_bin_counts) < 100:
+        c_gene_plot1_max_count = (np.ceil(max(c_gene_plot1_bin_counts)/10))*10
+    elif max(c_gene_plot1_bin_counts) < 200:
+        c_gene_plot1_max_count = (np.ceil(max(c_gene_plot1_bin_counts)/20))*20
+    elif max(c_gene_plot1_bin_counts) < 500:
+        c_gene_plot1_max_count = (np.ceil(max(c_gene_plot1_bin_counts)/50))*50
+    elif max(c_gene_plot1_bin_counts) < 1000:
+        c_gene_plot1_max_count = (np.ceil(max(c_gene_plot1_bin_counts)/100))*100
+    elif max(c_gene_plot1_bin_counts) < 2000:
+        c_gene_plot1_max_count = (np.ceil(max(c_gene_plot1_bin_counts)/200))*200
+    elif max(c_gene_plot1_bin_counts) < 5000:
+        c_gene_plot1_max_count = (np.ceil(max(c_gene_plot1_bin_counts)/500))*500
+    elif max(c_gene_plot1_bin_counts) < 10000:
+        c_gene_plot1_max_count = (np.ceil(max(c_gene_plot1_bin_counts)/1000))*1000
+    elif max(c_gene_plot1_bin_counts) < 20000:
+        c_gene_plot1_max_count = (np.ceil(max(c_gene_plot1_bin_counts)/2000))*2000
+    elif max(c_gene_plot1_bin_counts) < 50000:
+        c_gene_plot1_max_count = (np.ceil(max(c_gene_plot1_bin_counts)/5000))*5000
+    elif max(c_gene_plot1_bin_counts) < 100000:
+        c_gene_plot1_max_count = (np.ceil(max(c_gene_plot1_bin_counts)/10000))*10000
+    elif max(c_gene_plot1_bin_counts) < 200000:
+        c_gene_plot1_max_count = (np.ceil(max(c_gene_plot1_bin_counts)/20000))*20000
+    elif max(c_gene_plot1_bin_counts) < 500000:
+        c_gene_plot1_max_count = (np.ceil(max(c_gene_plot1_bin_counts)/50000))*50000
+    elif max(c_gene_plot1_bin_counts) < 1000000:
+        c_gene_plot1_max_count = (np.ceil(max(c_gene_plot1_bin_counts)/100000))*100000
+    elif max(c_gene_plot1_bin_counts) < 2000000:
+        c_gene_plot1_max_count = (np.ceil(max(c_gene_plot1_bin_counts)/200000))*200000
+    elif max(c_gene_plot1_bin_counts) < 5000000:
+        c_gene_plot1_max_count = (np.ceil(max(c_gene_plot1_bin_counts)/500000))*500000
+    elif max(c_gene_plot1_bin_counts) < 10000000:
+        c_gene_plot1_max_count = (np.ceil(max(c_gene_plot1_bin_counts)/1000000))*1000000
+    else:
+        c_gene_plot1_max_count = 20000000
+
+    # Determine the number of c-genes not shown.
+    n_c_genes_not_shown = 0
+    for s in c_gene_sizes:
+        if s > c_gene_plot1_max_size:
+            n_c_genes_not_shown += 1
+
+    # Determine the values of ticks on the x axis.
+    c_gene_plot1_size_ticks = [0]
+    for x in range(10):
+        c_gene_plot1_size_ticks.append((x+1)*round((c_gene_plot1_max_size/10.0),1))
+
+    # Determine the values of ticks on the y axis.
+    c_gene_plot1_count_ticks = [0]
+    c_gene_plot2_proportion_ticks = [0.0]
+    for x in range(10):
+        c_gene_plot1_count_ticks.append((x+1)*round((c_gene_plot1_max_count/10.0),1))
+        c_gene_plot2_proportion_ticks.append(round(((x+1)/10.0),1))
+
+    # General definitions for svg.
+    corner_radius = 20
+    stroke_shift_to_inside = 1
+    plot_window_width = 840
+    plot_window_height = 640
+    plot_window_margin = 30
+    plot_window_left_space = 95
+    plot_tick_length = 5
+    plot_window_right_space = 30
+    plot_window_bottom_space = 40
+    plot_dim_x = plot_window_width - 2*plot_window_margin - plot_window_left_space - plot_window_right_space
+    plot_dim_y = plot_window_height - 2*plot_window_margin - plot_window_bottom_space
+
+    # Prepare to generate the svg elements for c-gene plot 1.
+    c_gene_plot1_svg_lines = []
+    c_gene_plot1_svg_rectangles = []
+    c_gene_plot1_svg_texts = []
+
+    # Add the ticks.
+    for i in c_gene_plot1_size_ticks[:-1]:
+        x_start = plot_window_margin + plot_window_left_space + plot_dim_x * (i / float(c_gene_plot1_max_size))
+        x_end = x_start
+        y_start = plot_window_margin + plot_dim_y
+        y_end = y_start + plot_tick_length
+        c_gene_plot1_svg_lines.append(Line(x_start, x_end, y_start, y_end, '#545860', 2, 1))
+    for i in c_gene_plot1_count_ticks[:-1]:
+        x_start = plot_window_margin + plot_window_left_space
+        x_end = x_start - plot_tick_length
+        y_start = plot_window_margin + plot_dim_y - plot_dim_y * (i / float(c_gene_plot1_max_count))
+        y_end = y_start
+        c_gene_plot1_svg_lines.append(Line(x_start, x_end, y_start, y_end, '#545860', 2, 1))
+
+    # Add the text.
+    all_integer = True
+    for i in c_gene_plot1_size_ticks:
+        if round(i) != round(i,1):
+            all_integer = False
+    for i in c_gene_plot1_size_ticks:
+        x_start = plot_window_margin + plot_window_left_space + plot_dim_x * (i / float(c_gene_plot1_max_size))
+        y_start = plot_window_margin + plot_dim_y + 17
+        if all_integer:
+            c_gene_plot1_svg_texts.append(Text(x_start, y_start, 'Helvetica', 12, '#545860', 'middle', 'middle', None, int(i)))
+        else:
+            c_gene_plot1_svg_texts.append(Text(x_start, y_start, 'Helvetica', 12, '#545860', 'middle', 'middle', None, round(i,1)))
+    x_start = plot_window_margin + plot_window_left_space + plot_dim_x * 0.5
+    y_start = plot_window_margin + plot_dim_y + 45
+    c_gene_plot1_svg_texts.append(Text(x_start, y_start, 'Helvetica', 15, '#545860', 'middle', 'middle', None, 'c-gene size (bp)'))
+    all_integer = True
+    for i in c_gene_plot1_count_ticks:
+        if round(i) != round(i,1):
+            all_integer = False
+    for i in c_gene_plot1_count_ticks:
+        x_start = plot_window_margin + plot_window_left_space - plot_tick_length - 7
+        y_start = plot_window_margin + plot_dim_y - plot_dim_y * (i / float(c_gene_plot1_max_count))
+        if all_integer:
+            c_gene_plot1_svg_texts.append(Text(x_start, y_start, 'Helvetica', 12, '#545860', 'end', 'middle', None, int(i)))
+        else:
+            c_gene_plot1_svg_texts.append(Text(x_start, y_start, 'Helvetica', 12, '#545860', 'end', 'middle', None, round(i,1)))
+    x_start = plot_window_margin
+    y_start = plot_window_margin + plot_dim_y * 0.5
+    c_gene_plot1_svg_texts.append(Text(x_start, y_start, 'Helvetica', 15, '#545860', 'middle', 'middle', 'rotate(-90 {},{})'.format(x_start,y_start), 'Frequency'))
+
+    # Add the rectangles.
+    for x in range(len(c_gene_plot1_bin_centers)):
+        x_start = plot_window_margin + plot_window_left_space + plot_dim_x * ((c_gene_plot1_bin_centers[x]-c_gene_plot1_bin_width/2.0)/float(c_gene_plot1_max_size))
+        y_start = plot_window_margin + plot_dim_y - plot_dim_y * (c_gene_plot1_bin_counts[x] / float(c_gene_plot1_max_count))
+        width = plot_dim_x/len(c_gene_plot1_bin_centers)
+        height = plot_dim_y * (c_gene_plot1_bin_counts[x] / float(c_gene_plot1_max_count))
+        c_gene_plot1_svg_rectangles.append(Rectangle(x_start, y_start, width, height, 'none', '#92a0a0', 1, 1))
+
+    # Add the path.
+    # Use an exponential distribution if a homogeneous recombination rate was used.
+    if rec_map == None:
+        exp_lambda = 1/np.mean(c_gene_sizes)
+        x_start = plot_window_margin + plot_window_left_space
+        y_start = plot_window_margin + plot_dim_y - plot_dim_y * ((exp_lambda * len(c_gene_sizes) * c_gene_plot1_bin_width) / float(c_gene_plot1_max_count))
+        c_gene_plot1_svg_path = Path(x_start, y_start, 'none', '#32aace', 5, 1, False)
+        for x in range(1000):
+            x_start = plot_window_margin + plot_window_left_space + ((x+1)/1000.0)*plot_dim_x
+            x_value_in_bp = ((x+1)/1000.0)*c_gene_plot1_max_size
+            y_start = plot_window_margin + plot_dim_y - plot_dim_y * ((exp_lambda * len(c_gene_sizes) * c_gene_plot1_bin_width * np.exp(-exp_lambda * x_value_in_bp)) / float(c_gene_plot1_max_count))
+            c_gene_plot1_svg_path.add_point(x_start, y_start)
+
+    # Use a Weibull distribution if a recombination map was used.
+    else:
+        # Identify the parameters of a Weibull distribution so that the median and mean are according to the median and mean tract sizes.
+        c_gene_sizes_mean = np.mean(c_gene_sizes)
+        best_wb_lambda = None
+        best_wb_k = None
+        best_fit = 1000000000
+        step_size = 0.01
+        # XXX TODO: Implement a faster way to fit the two parameters.
+        # wb_lambda has to be at least as large as tract_sizes_median, otherwise wb_k would be negative.
+        wb_lambda = c_gene_sizes_median
+        optimum_found = False
+        for _ in range(200000):
+            wb_lambda += step_size
+            wb_k = np.log(np.log(2)) / np.log(c_gene_sizes_median/wb_lambda)
+            wb_mean = wb_lambda * special.gamma(1.0 + 1.0/wb_k)
+            fit = abs(wb_mean - c_gene_sizes_mean)
+            if fit < best_fit:
+                best_wb_lambda = wb_lambda
+                best_wb_k = wb_k
+                best_fit = fit
+        wb_k = best_wb_k
+        wb_lambda = best_wb_lambda
+        # Add the path.
+        if wb_k < 1:
+            wb_start = None
+        elif wb_k == 1:
+            wb_start = 1/wb_lambda
+        else:
+            wb_start = 0
+        if wb_start == None:
+            c_gene_plot1_svg_path = None
+        else:
+            x_start = plot_window_margin + plot_window_left_space
+            y_start = plot_window_margin + plot_dim_y - plot_dim_y * ((len(c_gene_sizes) * c_gene_plot1_bin_width * wb_start) / float(c_gene_plot1_max_count))
+            c_gene_plot1_svg_path = Path(x_start, y_start, 'none', '#32aace', 5, 1, False)
+        for x in range(1000):
+            x_start = plot_window_margin + plot_window_left_space + ((x+1)/1000.0)*plot_dim_x
+            x_value_in_bp = ((x+1)/1000.0)*c_gene_plot1_max_size
+            wb_start = (wb_k/wb_lambda) * (x_value_in_bp/wb_lambda)**(wb_k-1) * np.exp(-(x_value_in_bp/wb_lambda)**wb_k)
+            y_start = plot_window_margin + plot_dim_y - plot_dim_y * ((len(c_gene_sizes) * c_gene_plot1_bin_width * wb_start) / float(c_gene_plot1_max_count))
+            if c_gene_plot1_svg_path == None:
+                c_gene_plot1_svg_path = Path(x_start, y_start, 'none', '#32aace', 5, 1, False)
+            else:
+                c_gene_plot1_svg_path.add_point(x_start, y_start)
+
+    # Add the figure legend.
+    x_start = plot_window_margin + plot_window_left_space + plot_dim_x - 10
+    y_start = plot_window_margin + 10
+    if rec_map == None:
+        c_gene_plot1_svg_texts.append(Text(x_start, y_start, 'Helvetica', 12, '#32aace', 'end', 'top', None, 'Fitted exponential distribution (&lambda; = {})'.format(round(exp_lambda,5))))
+    else:
+        c_gene_plot1_svg_texts.append(Text(x_start, y_start, 'Helvetica', 12, '#32aace', 'end', 'top', None, 'Fitted Weibull distribution (&lambda; = {}, k = {})'.format(round(wb_lambda,3), round(wb_k,3))))
+    y_start += 20
+    c_gene_plot1_svg_texts.append(Text(x_start, y_start, 'Helvetica', 12, '#92a0a0', 'end', 'top', None, '{} c-genes longer than {} bp not shown'.format(n_c_genes_not_shown, c_gene_plot1_max_size)))
+
+    # Insert the svg elements into c-gene plot 1.
+    c_gene_plot1_svg_string = '          <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}\" xmlns:xlink=\"htttp://www.w3.org/1999/xlink\">\n'.format(plot_window_width, plot_window_height, plot_window_width, plot_window_height)
+    c_gene_plot1_svg_string += '            <defs>\n'
+    c_gene_plot1_svg_string += '              <radialGradient id=\"rad_grad1\" cx=\"50%\" cy=\"50%\" r=\"50%\" fx=\"50%\" fy=\"50%\">\n'
+    c_gene_plot1_svg_string += '                <stop offset=\"0%\" style=\"stop-color:#ede7d4;stop-opacity:1\" />\n'
+    c_gene_plot1_svg_string += '                <stop offset=\"100%\" style=\"stop-color:white;stop-opacity:1\" />\n'
+    c_gene_plot1_svg_string += '              </radialGradient>\n'
+    c_gene_plot1_svg_string += '              <clipPath id=\"cut1\">\n'
+    c_gene_plot1_svg_string += '                <rect x=\"{0}\" y=\"{1}\" width=\"{2}\" height=\"{2}\" />\n'.format(plot_window_margin+plot_window_left_space, plot_window_margin, plot_dim_y)
+    c_gene_plot1_svg_string += '              </clipPath>\n'
+    c_gene_plot1_svg_string += '              <marker id=\"head\" orient=\"auto\" markerWidth=\"4\" markerHeight=\"8\" refX=\"0.1\" refY=\"4\">\n'
+    c_gene_plot1_svg_string += '                <path d=\"M0,0 V8 L4,4 Z\" fill=\"#545860\" />\n'
+    c_gene_plot1_svg_string += '              <marker>\n'
+    c_gene_plot1_svg_string += '            </defs>\n'
+    c_gene_plot1_svg_string += '            <path d=\"M {0} {5} L {1} {5} A {0},{0} 0 0 1 {2},{0} L {2} {3} A {0},{0} 0 0 1 {1},{4} L {0} {4} A {0},{0} 0 0 1 {5},{3} L {5} {0} A {0},{0} 0 0 1 {0} {5} z\" fill=\"#ede7d4\" stroke=\"#545860\" stroke-width=\"2\" fill-opacity=\"0.15\" />'.format(corner_radius, plot_window_width-corner_radius, plot_window_width-stroke_shift_to_inside, plot_window_height-corner_radius, plot_window_height-stroke_shift_to_inside, stroke_shift_to_inside)
+    c_gene_plot1_svg_string += '            <rect x=\"{0}\" y=\"0\" width=\"{1}\" height=\"{1}\" fill=\"url(#rad_grad1)\" clip-path=\"url(#cut1)\" fill-opacity=\"0.5\" />\n'.format(plot_window_margin+plot_window_left_space-plot_dim_y, 2*plot_dim_y)
+    for r in c_gene_plot1_svg_rectangles:
+        c_gene_plot1_svg_string += '            {}\n'.format(r.to_svg())
+    for l in c_gene_plot1_svg_lines:
+        c_gene_plot1_svg_string += '            {}\n'.format(l.to_svg())
+    for t in c_gene_plot1_svg_texts:
+        c_gene_plot1_svg_string += '            {}\n'.format(t.to_svg())
+    x_start = plot_window_margin + plot_window_left_space
+    x_end = x_start + plot_dim_x
+    y_start = plot_window_margin + plot_dim_y
+    y_end = y_start
+    c_gene_plot1_svg_string += '            <line marker-end=\"url(#head)\" x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"{}\" stroke-width=\"{}\" stroke-opacity=\"{}\" />'.format(round(x_start,3), round(y_start,3), round(x_end,3), round(y_end,3), '#545860', 2, 1)
+    x_start = plot_window_margin + plot_window_left_space
+    x_end = x_start
+    y_end = plot_window_margin
+    y_start = y_end + plot_dim_y
+    c_gene_plot1_svg_string += '            <line marker-end=\"url(#head)\" x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"{}\" stroke-width=\"{}\" stroke-opacity=\"{}\" />'.format(round(x_start,3), round(y_start,3), round(x_end,3), round(y_end,3), '#545860', 2, 1)
+    c_gene_plot1_svg_string += '            {}\n'.format(c_gene_plot1_svg_path.to_svg())
+    c_gene_plot1_svg_string += '          </svg>\n'
+
+    # Determine the threshold c-gene size to plot in c-gene plot 2.
+    threshold = 0.1
+    for x in range(1,len(proportions_covered_by_c_genes)):
+        if proportions_covered_by_c_genes[x-1] > threshold and proportions_covered_by_c_genes[x] <= threshold:
+            c_gene_threshold_size = sorted_c_gene_sizes[x]
+
+    # Determine the maximum c-gene size to plot in c-gene plot 2.
+    for x in [1, 10, 100, 1000, 10000, 100000, 1000000, 10000000]:
+        for y in range(1,10):
+            if c_gene_threshold_size < x*y:
+                c_gene_plot2_max_size = x*y
+                break
+        else:
+            continue
+        break
+
+    # Determine the values of ticks on the x axis.
+    c_gene_plot2_size_ticks = [0]
+    for x in range(10):
+        c_gene_plot2_size_ticks.append((x+1)*round((c_gene_plot2_max_size/10.0),1))
+
+    # Prepare to generate the svg elements for c-gene plot 2.
+    c_gene_plot2_svg_lines = []
+    c_gene_plot2_svg_rectangles = []
+    c_gene_plot2_svg_texts = []
+
+    # Add the ticks.
+    for i in c_gene_plot2_size_ticks[:-1]:
+        x_start = plot_window_margin + plot_window_left_space + plot_dim_x * (i / float(c_gene_plot2_max_size))
+        x_end = x_start
+        y_start = plot_window_margin + plot_dim_y
+        y_end = y_start + plot_tick_length
+        c_gene_plot2_svg_lines.append(Line(x_start, x_end, y_start, y_end, '#545860', 2, 1))
+
+    for i in c_gene_plot2_proportion_ticks[:-1]:
+        x_start = plot_window_margin + plot_window_left_space
+        x_end = x_start - plot_tick_length
+        y_start = plot_window_margin + plot_dim_y - plot_dim_y * i
+        y_end = y_start
+        c_gene_plot2_svg_lines.append(Line(x_start, x_end, y_start, y_end, '#545860', 2, 1))
+
+    # Add the text.
+    all_integer = True
+    for i in c_gene_plot2_size_ticks:
+        if round(i) != round(i,1):
+            all_integer = False
+    for i in c_gene_plot2_size_ticks:
+        x_start = plot_window_margin + plot_window_left_space + plot_dim_x * (i / float(c_gene_plot2_max_size))
+        y_start = plot_window_margin + plot_dim_y + 17
+        if all_integer:
+            c_gene_plot2_svg_texts.append(Text(x_start, y_start, 'Helvetica', 12, '#545860', 'middle', 'middle', None, int(i)))
+        else:
+            c_gene_plot2_svg_texts.append(Text(x_start, y_start, 'Helvetica', 12, '#545860', 'middle', 'middle', None, round(i,1)))
+    x_start = plot_window_margin + plot_window_left_space + plot_dim_x * 0.5
+    y_start = plot_window_margin + plot_dim_y + 45
+    c_gene_plot2_svg_texts.append(Text(x_start, y_start, 'Helvetica', 15, '#545860', 'middle', 'middle', None, 'c-gene size (bp)'))
+    all_integer = True
+    for i in c_gene_plot2_proportion_ticks:
+        if round(i) != round(i,1):
+            all_integer = False
+    for i in c_gene_plot2_proportion_ticks:
+        x_start = plot_window_margin + plot_window_left_space - plot_tick_length - 7
+        y_start = plot_window_margin + plot_dim_y - plot_dim_y * i
+        if all_integer:
+            c_gene_plot2_svg_texts.append(Text(x_start, y_start, 'Helvetica', 12, '#545860', 'end', 'middle', None, int(i)))
+        else:
+            c_gene_plot2_svg_texts.append(Text(x_start, y_start, 'Helvetica', 12, '#545860', 'end', 'middle', None, round(i,1)))
+    x_start = plot_window_margin
+    y_start = plot_window_margin + plot_dim_y * 0.5
+    c_gene_plot2_svg_texts.append(Text(x_start, y_start, 'Helvetica', 15, '#545860', 'middle', 'middle', 'rotate(-90 {},{})'.format(x_start, y_start), 'Proportion of genome covered by c-genes of at least this size'))
+
+    # Add the path.
+    x_start = plot_window_margin + plot_window_left_space
+    y_start = plot_window_margin
+    c_gene_plot2_svg_path_stroke = Path(x_start, y_start, 'none', '#32aace', 5, 1, False)
+    c_gene_plot2_svg_path_fill = Path(x_start, y_start, '#ede7d4', 'none', 0, 1, True)
+    y_old = y_start
+    x_old = x_start
+    all_c_genes_smaller_than_threshold = True
+    for z in range(len(sorted_c_gene_sizes)):
+        if sorted_c_gene_sizes[z] < c_gene_plot2_max_size:
+            x_new = plot_window_margin + plot_window_left_space + (sorted_c_gene_sizes[z]/c_gene_plot2_max_size) * plot_dim_x
+            if x_new > x_old + 1:
+                y_new = plot_window_margin + plot_dim_y - plot_dim_y * proportions_covered_by_c_genes[z]
+                c_gene_plot2_svg_path_stroke.add_point(x_new, y_old)
+                c_gene_plot2_svg_path_fill.add_point(x_new, y_old)
+                c_gene_plot2_svg_path_stroke.add_point(x_new, y_new)
+                c_gene_plot2_svg_path_fill.add_point(x_new, y_new)
+                y_old = y_new
+                x_old = x_new
+        else:
+            all_c_genes_smaller_than_threshold = False
+    if all_c_genes_smaller_than_threshold == False:
+        x = plot_window_margin + plot_window_left_space + plot_dim_x
+        y = y_old
+        c_gene_plot2_svg_path_stroke.add_point(x, y)
+        c_gene_plot2_svg_path_fill.add_point(x, y)
+        y = plot_window_margin + plot_dim_y
+        c_gene_plot2_svg_path_fill.add_point(x, y)
+    x = plot_window_margin + plot_window_left_space
+    y = plot_window_margin + plot_dim_y
+    c_gene_plot2_svg_path_fill.add_point(x, y)
+
+    # Insert the svg elements into c-gene plot 2.
+    c_gene_plot2_svg_string = '          <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}\" xmlns:xlink=\"htttp://www.w3.org/1999/xlink\">\n'.format(plot_window_width, plot_window_height, plot_window_width, plot_window_height)
+    c_gene_plot2_svg_string += '            <defs>\n'
+    c_gene_plot2_svg_string += '              <linearGradient id="lin_grad1" x1="0%" y1="0%" x2="100%" y2="0%">\n'
+    c_gene_plot2_svg_string += '                <stop offset=\"0%\" style=\"stop-color:#ede7d4;stop-opacity:1\" />\n'
+    c_gene_plot2_svg_string += '                <stop offset=\"100%\" style=\"stop-color:white;stop-opacity:1\" />\n'
+    c_gene_plot2_svg_string += '              </linearGradient>\n'
+    c_gene_plot2_svg_string += '              <marker id=\"head\" orient=\"auto\" markerWidth=\"4\" markerHeight=\"8\" refX=\"0.1\" refY=\"4\">\n'
+    c_gene_plot2_svg_string += '                <path d=\"M0,0 V8 L4,4 Z\" fill=\"#545860\" />\n'
+    c_gene_plot2_svg_string += '              <marker>\n'
+    c_gene_plot2_svg_string += '            </defs>\n'
+    c_gene_plot2_svg_string += '            <path d=\"M {0} {5} L {1} {5} A {0},{0} 0 0 1 {2},{0} L {2} {3} A {0},{0} 0 0 1 {1},{4} L {0} {4} A {0},{0} 0 0 1 {5},{3} L {5} {0} A {0},{0} 0 0 1 {0} {5} z\" fill=\"#ede7d4\" stroke=\"#545860\" stroke-width=\"2\" fill-opacity=\"0.15\" />'.format(corner_radius, plot_window_width-corner_radius, plot_window_width-stroke_shift_to_inside, plot_window_height-corner_radius, plot_window_height-stroke_shift_to_inside, stroke_shift_to_inside)
+    c_gene_plot2_svg_path_fill_svg = c_gene_plot2_svg_path_fill.to_svg().replace('fill=\"#ede7d4\"','fill=\"url(#lin_grad1)\"')
+    c_gene_plot2_svg_string += '            {}\n'.format(c_gene_plot2_svg_path_fill_svg)
+    for l in c_gene_plot2_svg_lines:
+        c_gene_plot2_svg_string += '            {}\n'.format(l.to_svg())
+    for t in c_gene_plot2_svg_texts:
+        c_gene_plot2_svg_string += '            {}\n'.format(t.to_svg())
+    x_start = plot_window_margin + plot_window_left_space
+    x_end = x_start + plot_dim_x
+    y_start = plot_window_margin + plot_dim_y
+    y_end = y_start
+    c_gene_plot2_svg_string += '            <line marker-end=\"url(#head)\" x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"{}\" stroke-width=\"{}\" stroke-opacity=\"{}\" />'.format(round(x_start,3), round(y_start,3), round(x_end,3), round(y_end,3), '#545860', 2, 1)
+    x_start = plot_window_margin + plot_window_left_space
+    x_end = x_start
+    y_end = plot_window_margin
+    y_start = y_end + plot_dim_y
+    c_gene_plot2_svg_string += '            <line marker-end=\"url(#head)\" x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"{}\" stroke-width=\"{}\" stroke-opacity=\"{}\" />'.format(round(x_start,3), round(y_start,3), round(x_end,3), round(y_end,3), '#545860', 2, 1)
+    c_gene_plot2_svg_string += '            {}\n'.format(c_gene_plot2_svg_path_stroke.to_svg())
+    c_gene_plot2_svg_string += '          </svg>\n'
+
+    # Feedback.
+    print(' done.')
+
+    # Feedback.
+    print('    Preparing single-topology tract plots...', end='', flush=True)
+
+    # Determine the maximum single-topology tract size to plot in tract plot 1.
+    tract_sizes_median = np.median(tract_sizes)
+    if tract_sizes_median < 1:
+        tract_plot1_max_size = 5
+    elif tract_sizes_median < 2:
+        tract_plot1_max_size = 10
+    elif tract_sizes_median < 5:
+        tract_plot1_max_size = 20
+    elif tract_sizes_median < 10:
+        tract_plot1_max_size = 50
+    elif tract_sizes_median < 20:
+        tract_plot1_max_size = 100
+    elif tract_sizes_median < 50:
+        tract_plot1_max_size = 200
+    elif tract_sizes_median < 100:
+        tract_plot1_max_size = 500
+    elif tract_sizes_median < 200:
+        tract_plot1_max_size = 1000
+    elif tract_sizes_median < 500:
+        tract_plot1_max_size = 2000
+    elif tract_sizes_median < 1000:
+        tract_plot1_max_size = 5000
+    elif tract_sizes_median < 2000:
+        tract_plot1_max_size = 10000
+    elif tract_sizes_median < 5000:
+        tract_plot1_max_size = 20000
+    elif tract_sizes_median < 10000:
+        tract_plot1_max_size = 50000
+    elif tract_sizes_median < 20000:
+        tract_plot1_max_size = 100000
+    elif tract_sizes_median < 50000:
+        tract_plot1_max_size = 200000
+    elif tract_sizes_median < 100000:
+        tract_plot1_max_size = 500000
+    elif tract_sizes_median < 200000:
+        tract_plot1_max_size = 1000000
+    elif tract_sizes_median < 500000:
+        tract_plot1_max_size = 2000000
+    elif tract_sizes_median < 1000000:
+        tract_plot1_max_size = 5000000
+    elif tract_sizes_median < 2000000:
+        tract_plot1_max_size = 10000000
+    elif tract_sizes_median < 5000000:
+        tract_plot1_max_size = 20000000
+    else:
+        tract_plot1_max_size = 50000000
+
+    # Determine the size values of bin centers.
+    tract_plot1_bin_number = 25
+    tract_plot1_bin_centers = []
+    tract_plot1_bin_width = tract_plot1_max_size/float(tract_plot1_bin_number)
+    for x in range(tract_plot1_bin_number):
+        tract_plot1_bin_centers.append((tract_plot1_bin_width/2.0)+(x*tract_plot1_bin_width))
+
+    # Fill the bins with counts of tracts.
+    tract_plot1_bin_counts = []
+    for x in range(tract_plot1_bin_number):
+        tract_plot1_bin_counts.append(0)
+    for s in tract_sizes:
+        for x in range(tract_plot1_bin_number):
+            if s < tract_plot1_bin_centers[x]+(tract_plot1_bin_width/2.0) and s >= tract_plot1_bin_centers[x]-(tract_plot1_bin_width/2.0):
+                tract_plot1_bin_counts[x] += 1
+                break
+
+    # Get the proportions of the genome covered by tracts of a given size or larger.
+    sorted_tract_sizes = sorted(tract_sizes)
+    proportions_covered_by_tracts = []
+    smaller_tract_sizes_sum = 0
+    for sorted_tract_size in sorted_tract_sizes:
+        smaller_tract_sizes_sum += sorted_tract_size
+        proportions_covered_by_tracts.append((tract_sizes_sum-smaller_tract_sizes_sum)/tract_sizes_sum)
+
+    # Determine the maximum tract count per bin to plot.
+    if max(tract_plot1_bin_counts) < 10:
+        tract_plot1_max_count = 10
+    elif max(tract_plot1_bin_counts) < 20:
+        tract_plot1_max_count = (np.ceil(max(tract_plot1_bin_counts)/2))*2
+    elif max(tract_plot1_bin_counts) < 50:
+        tract_plot1_max_count = (np.ceil(max(tract_plot1_bin_counts)/5))*5
+    elif max(tract_plot1_bin_counts) < 100:
+        tract_plot1_max_count = (np.ceil(max(tract_plot1_bin_counts)/10))*10
+    elif max(tract_plot1_bin_counts) < 200:
+        tract_plot1_max_count = (np.ceil(max(tract_plot1_bin_counts)/20))*20
+    elif max(tract_plot1_bin_counts) < 500:
+        tract_plot1_max_count = (np.ceil(max(tract_plot1_bin_counts)/50))*50
+    elif max(tract_plot1_bin_counts) < 1000:
+        tract_plot1_max_count = (np.ceil(max(tract_plot1_bin_counts)/100))*100
+    elif max(tract_plot1_bin_counts) < 2000:
+        tract_plot1_max_count = (np.ceil(max(tract_plot1_bin_counts)/200))*200
+    elif max(tract_plot1_bin_counts) < 5000:
+        tract_plot1_max_count = (np.ceil(max(tract_plot1_bin_counts)/500))*500
+    elif max(tract_plot1_bin_counts) < 10000:
+        tract_plot1_max_count = (np.ceil(max(tract_plot1_bin_counts)/1000))*1000
+    elif max(tract_plot1_bin_counts) < 20000:
+        tract_plot1_max_count = (np.ceil(max(tract_plot1_bin_counts)/2000))*2000
+    elif max(tract_plot1_bin_counts) < 50000:
+        tract_plot1_max_count = (np.ceil(max(tract_plot1_bin_counts)/5000))*5000
+    elif max(tract_plot1_bin_counts) < 100000:
+        tract_plot1_max_count = (np.ceil(max(tract_plot1_bin_counts)/10000))*10000
+    elif max(tract_plot1_bin_counts) < 200000:
+        tract_plot1_max_count = (np.ceil(max(tract_plot1_bin_counts)/20000))*20000
+    elif max(tract_plot1_bin_counts) < 500000:
+        tract_plot1_max_count = (np.ceil(max(tract_plot1_bin_counts)/50000))*50000
+    elif max(tract_plot1_bin_counts) < 1000000:
+        tract_plot1_max_count = (np.ceil(max(tract_plot1_bin_counts)/100000))*100000
+    elif max(tract_plot1_bin_counts) < 2000000:
+        tract_plot1_max_count = (np.ceil(max(tract_plot1_bin_counts)/200000))*200000
+    elif max(tract_plot1_bin_counts) < 5000000:
+        tract_plot1_max_count = (np.ceil(max(tract_plot1_bin_counts)/500000))*500000
+    elif max(tract_plot1_bin_counts) < 10000000:
+        tract_plot1_max_count = (np.ceil(max(tract_plot1_bin_counts)/1000000))*1000000
+    else:
+        tract_plot1_max_count = 20000000
+
+    # Determine the number of tracts not shown.
+    n_tracts_not_shown = 0
+    for s in tract_sizes:
+        if s > tract_plot1_max_size:
+            n_tracts_not_shown += 1
+
+    # Determine the values of ticks on the x axis.
+    tract_plot1_size_ticks = [0]
+    for x in range(10):
+        tract_plot1_size_ticks.append((x+1)*round((tract_plot1_max_size/10.0),1))
+
+    # Determine the values of ticks on the y axis.
+    tract_plot1_count_ticks = [0]
+    tract_plot2_proportion_ticks = [0.0]
+    for x in range(10):
+        tract_plot1_count_ticks.append((x+1)*round((tract_plot1_max_count/10.0),1))
+        tract_plot2_proportion_ticks.append(round(((x+1)/10.0),1))
+
+    # Prepare to generate the svg elements for tract plot 1.
+    tract_plot1_svg_lines = []
+    tract_plot1_svg_rectangles = []
+    tract_plot1_svg_texts = []
+
+    # Add the ticks.
+    for i in tract_plot1_size_ticks[:-1]:
+        x_start = plot_window_margin + plot_window_left_space + plot_dim_x * (i / float(tract_plot1_max_size))
+        x_end = x_start
+        y_start = plot_window_margin + plot_dim_y
+        y_end = y_start + plot_tick_length
+        tract_plot1_svg_lines.append(Line(x_start, x_end, y_start, y_end, '#545860', 2, 1))
+
+    for i in tract_plot1_count_ticks[:-1]:
+        x_start = plot_window_margin + plot_window_left_space
+        x_end = x_start - plot_tick_length
+        y_start = plot_window_margin + plot_dim_y - plot_dim_y * (i / float(tract_plot1_max_count))
+        y_end = y_start
+        tract_plot1_svg_lines.append(Line(x_start, x_end, y_start, y_end, '#545860', 2, 1))
+
+    # Add the text.
+    all_integer = True
+    for i in tract_plot1_size_ticks:
+        if round(i) != round(i,1):
+            all_integer = False
+    for i in tract_plot1_size_ticks:
+        x_start = plot_window_margin + plot_window_left_space + plot_dim_x * (i / float(tract_plot1_max_size))
+        y_start = plot_window_margin + plot_dim_y + 17
+        if all_integer:
+            tract_plot1_svg_texts.append(Text(x_start, y_start, 'Helvetica', 12, '#545860', 'middle', 'middle', None, int(i)))
+        else:
+            tract_plot1_svg_texts.append(Text(x_start, y_start, 'Helvetica', 12, '#545860', 'middle', 'middle', None, round(i,1)))
+    x_start = plot_window_margin + plot_window_left_space + plot_dim_x * 0.5
+    y_start = plot_window_margin + plot_dim_y + 45
+    tract_plot1_svg_texts.append(Text(x_start, y_start, 'Helvetica', 15, '#545860', 'middle', 'middle', None, 'Single-topology tract size (bp)'))
+    all_integer = True
+    for i in tract_plot1_count_ticks:
+        if round(i) != round(i,1):
+            all_integer = False
+    for i in tract_plot1_count_ticks:
+        x_start = plot_window_margin + plot_window_left_space - plot_tick_length - 7
+        y_start = plot_window_margin + plot_dim_y - plot_dim_y * (i / float(tract_plot1_max_count))
+        if all_integer:
+            tract_plot1_svg_texts.append(Text(x_start, y_start, 'Helvetica', 12, '#545860', 'end', 'middle', None, int(i)))
+        else:
+            tract_plot1_svg_texts.append(Text(x_start, y_start, 'Helvetica', 12, '#545860', 'end', 'middle', None, round(i,1)))
+    x_start = plot_window_margin
+    y_start = plot_window_margin + plot_dim_y * 0.5
+    tract_plot1_svg_texts.append(Text(x_start, y_start, 'Helvetica', 15, '#545860', 'middle', 'middle', 'rotate(-90 {},{})'.format(x_start, y_start), 'Frequency'))
+
+    # Add the rectangles.
+    for x in range(len(tract_plot1_bin_centers)):
+        x_start = plot_window_margin + plot_window_left_space + plot_dim_x * ((tract_plot1_bin_centers[x]-tract_plot1_bin_width/2.0)/float(tract_plot1_max_size))
+        y_start = plot_window_margin + plot_dim_y - plot_dim_y * (tract_plot1_bin_counts[x] / float(tract_plot1_max_count))
+        width = plot_dim_x/len(tract_plot1_bin_centers)
+        height = plot_dim_y * (tract_plot1_bin_counts[x] / float(tract_plot1_max_count))
+        tract_plot1_svg_rectangles.append(Rectangle(x_start, y_start, width, height, 'none', '#92a0a0', 1, 1))
+
+    # Identify the parameters of a Weibull distribution so that the median and mean are according to the median and mean tract sizes.
+    tract_sizes_mean = np.mean(tract_sizes)
+    best_wb_lambda = None
+    best_wb_k = None
+    best_fit = 1000000000
+    step_size = 0.01
+    # XXX TODO: Implement a faster way to fit the two parameters.
+    # wb_lambda has to be at least as large as tract_sizes_median, otherwise wb_k would be negative.
+    wb_lambda = tract_sizes_median
+    optimum_found = False
+    for _ in range(200000):
+        wb_lambda += step_size
+        wb_k = np.log(np.log(2)) / np.log(tract_sizes_median/wb_lambda)
+        wb_mean = wb_lambda * special.gamma(1.0 + 1.0/wb_k)
+        fit = abs(wb_mean - tract_sizes_mean)
+        if fit < best_fit:
+            best_wb_lambda = wb_lambda
+            best_wb_k = wb_k
+            best_fit = fit
+    wb_k = best_wb_k
+    wb_lambda = best_wb_lambda
+    if wb_k == None:
+        wb_start = None
+    elif wb_k < 1:
+        wb_start = None
+    elif wb_k == 1:
+        wb_start = 1/wb_lambda
+    else:
+        wb_start = 0
+    if wb_start == None:
+        tract_plot1_svg_path = None
+    else:
+        x_start = plot_window_margin + plot_window_left_space
+        y_start = plot_window_margin + plot_dim_y - plot_dim_y * ((len(tract_sizes) * tract_plot1_bin_width * wb_start) / float(tract_plot1_max_count))
+        tract_plot1_svg_path = Path(x_start, y_start, 'none', '#f5902f', 5, 1, False)
+    for x in range(1000):
+        x_start = plot_window_margin + plot_window_left_space + ((x+1)/1000.0)*plot_dim_x
+        x_value_in_bp = ((x+1)/1000.0)*tract_plot1_max_size
+        wb_start = (wb_k/wb_lambda) * (x_value_in_bp/wb_lambda)**(wb_k-1) * np.exp(-(x_value_in_bp/wb_lambda)**wb_k)
+        y_start = plot_window_margin + plot_dim_y - plot_dim_y * ((len(tract_sizes) * tract_plot1_bin_width * wb_start) / float(tract_plot1_max_count))
+        if tract_plot1_svg_path == None:
+            tract_plot1_svg_path = Path(x_start, y_start, 'none', '#f5902f', 5, 1, False)
+        else:
+            tract_plot1_svg_path.add_point(x_start, y_start)
+
+    # Add the figure legend.
+    x_start = plot_window_margin + plot_window_left_space + plot_dim_x - 10
+    y_start = plot_window_margin + 10
+    tract_plot1_svg_texts.append(Text(x_start, y_start, 'Helvetica', 12, '#f5902f', 'end', 'top', None, 'Fitted Weibull distribution (&lambda; = {}, k = {})'.format(round(wb_lambda,3), round(wb_k,3))))
+    y_start += 20
+    tract_plot1_svg_texts.append(Text(x_start, y_start, 'Helvetica', 12, '#92a0a0', 'end', 'top', None, '{} tracts longer than {} bp not shown'.format(n_tracts_not_shown, tract_plot1_max_size)))
+
+    # Insert the svg elements into tract plot 1.
+    tract_plot1_svg_string = '          <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}\" xmlns:xlink=\"htttp://www.w3.org/1999/xlink\">\n'.format(plot_window_width, plot_window_height, plot_window_width, plot_window_height)
+    tract_plot1_svg_string += '            <defs>\n'
+    tract_plot1_svg_string += '              <radialGradient id=\"rad_grad2\" cx=\"50%\" cy=\"50%\" r=\"50%\" fx=\"50%\" fy=\"50%\">\n'
+    tract_plot1_svg_string += '                <stop offset=\"0%\" style=\"stop-color:#ede7d4;stop-opacity:1\" />\n'
+    tract_plot1_svg_string += '                <stop offset=\"100%\" style=\"stop-color:white;stop-opacity:1\" />\n'
+    tract_plot1_svg_string += '              </radialGradient>\n'
+    tract_plot1_svg_string += '              <clipPath id=\"cut2\">\n'
+    tract_plot1_svg_string += '                <rect x=\"{0}\" y=\"{1}\" width=\"{2}\" height=\"{2}\" />\n'.format(plot_window_margin+plot_window_left_space, plot_window_margin, plot_dim_y)
+    tract_plot1_svg_string += '              </clipPath>\n'
+    tract_plot1_svg_string += '              <marker id=\"head\" orient=\"auto\" markerWidth=\"4\" markerHeight=\"8\" refX=\"0.1\" refY=\"4\">\n'
+    tract_plot1_svg_string += '                <path d=\"M0,0 V8 L4,4 Z\" fill=\"#545860\" />\n'
+    tract_plot1_svg_string += '              <marker>\n'
+    tract_plot1_svg_string += '            </defs>\n'
+    tract_plot1_svg_string += '            <path d=\"M {0} {5} L {1} {5} A {0},{0} 0 0 1 {2},{0} L {2} {3} A {0},{0} 0 0 1 {1},{4} L {0} {4} A {0},{0} 0 0 1 {5},{3} L {5} {0} A {0},{0} 0 0 1 {0} {5} z\" fill=\"#ede7d4\" stroke=\"#545860\" stroke-width=\"2\" fill-opacity=\"0.15\" />'.format(corner_radius, plot_window_width-corner_radius, plot_window_width-stroke_shift_to_inside, plot_window_height-corner_radius, plot_window_height-stroke_shift_to_inside, stroke_shift_to_inside)
+    tract_plot1_svg_string += '            <rect x=\"{0}\" y=\"0\" width=\"{1}\" height=\"{1}\" fill=\"url(#rad_grad2)\" clip-path=\"url(#cut2)\" fill-opacity=\"0.5\" />\n'.format(plot_window_margin+plot_window_left_space-plot_dim_y, 2*plot_dim_y)
+    for r in tract_plot1_svg_rectangles:
+        tract_plot1_svg_string += '            {}\n'.format(r.to_svg())
+    for l in tract_plot1_svg_lines:
+        tract_plot1_svg_string += '            {}\n'.format(l.to_svg())
+    for t in tract_plot1_svg_texts:
+        tract_plot1_svg_string += '            {}\n'.format(t.to_svg())
+    x_start = plot_window_margin + plot_window_left_space
+    x_end = x_start + plot_dim_x
+    y_start = plot_window_margin + plot_dim_y
+    y_end = y_start
+    tract_plot1_svg_string += '            <line marker-end=\"url(#head)\" x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"{}\" stroke-width=\"{}\" stroke-opacity=\"{}\" />'.format(round(x_start,3), round(y_start,3), round(x_end,3), round(y_end,3), '#545860', 2, 1)
+    x_start = plot_window_margin + plot_window_left_space
+    x_end = x_start
+    y_end = plot_window_margin
+    y_start = y_end + plot_dim_y
+    tract_plot1_svg_string += '            <line marker-end=\"url(#head)\" x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"{}\" stroke-width=\"{}\" stroke-opacity=\"{}\" />'.format(round(x_start,3), round(y_start,3), round(x_end,3), round(y_end,3), '#545860', 2, 1)
+    tract_plot1_svg_string += '            {}\n'.format(tract_plot1_svg_path.to_svg())
+    tract_plot1_svg_string += '          </svg>\n'
+
+    # Determine the threshold tract size to plot in tract plot 2.
+    threshold = 0.1
+    for x in range(1,len(proportions_covered_by_tracts)):
+        if proportions_covered_by_tracts[x-1] > threshold and proportions_covered_by_tracts[x] <= threshold:
+            tract_threshold_size = sorted_tract_sizes[x]
+
+    # Determine the maximum tract size to plot in tract plot 2.
+    for x in [1, 10, 100, 1000, 10000, 100000, 1000000, 10000000]:
+        for y in range(1,10):
+            if tract_threshold_size < x*y:
+                tract_plot2_max_size = x*y
+                break
+        else:
+            continue
+        break
+
+    # Determine the values of ticks on the x axis.
+    tract_plot2_size_ticks = [0]
+    for x in range(10):
+        tract_plot2_size_ticks.append((x+1)*round((tract_plot2_max_size/10.0),1))
+
+    # Prepare to generate the svg elements for tract plot 2.
+    tract_plot2_svg_lines = []
+    tract_plot2_svg_rectangles = []
+    tract_plot2_svg_texts = []
+
+    # Add the ticks.
+    for i in tract_plot2_size_ticks[:-1]:
+        x_start = plot_window_margin + plot_window_left_space + plot_dim_x * (i / float(tract_plot2_max_size))
+        x_end = x_start
+        y_start = plot_window_margin + plot_dim_y
+        y_end = y_start + plot_tick_length
+        tract_plot2_svg_lines.append(Line(x_start, x_end, y_start, y_end, '#545860', 2, 1))
+    for i in tract_plot2_proportion_ticks[:-1]:
+        x_start = plot_window_margin + plot_window_left_space
+        x_end = x_start - plot_tick_length
+        y_start = plot_window_margin + plot_dim_y - plot_dim_y * i
+        y_end = y_start
+        tract_plot2_svg_lines.append(Line(x_start, x_end, y_start, y_end, '#545860', 2, 1))
+
+    # Add the text.
+    all_integer = True
+    for i in tract_plot2_size_ticks:
+        if round(i) != round(i,1):
+            all_integer = False
+    for i in tract_plot2_size_ticks:
+        x_start = plot_window_margin + plot_window_left_space + plot_dim_x * (i / float(tract_plot2_max_size))
+        y_start = plot_window_margin + plot_dim_y + 17
+        if all_integer:
+            tract_plot2_svg_texts.append(Text(x_start, y_start, 'Helvetica', 12, '#545860', 'middle', 'middle', None, int(i)))
+        else:
+            tract_plot2_svg_texts.append(Text(x_start, y_start, 'Helvetica', 12, '#545860', 'middle', 'middle', None, round(i,1)))
+    x_start = plot_window_margin + plot_window_left_space + plot_dim_x * 0.5
+    y_start = plot_window_margin + plot_dim_y + 45
+    tract_plot2_svg_texts.append(Text(x_start, y_start, 'Helvetica', 15, '#545860', 'middle', 'middle', None, 'Single-topology tract size (bp)'))
+    all_integer = True
+    for i in tract_plot2_proportion_ticks:
+        if round(i) != round(i,1):
+            all_integer = False
+    for i in tract_plot2_proportion_ticks:
+        x_start = plot_window_margin + plot_window_left_space - plot_tick_length - 7
+        y_start = plot_window_margin + plot_dim_y - plot_dim_y * i
+        if all_integer:
+            tract_plot2_svg_texts.append(Text(x_start, y_start, 'Helvetica', 12, '#545860', 'end', 'middle', None, int(i)))
+        else:
+            tract_plot2_svg_texts.append(Text(x_start, y_start, 'Helvetica', 12, '#545860', 'end', 'middle', None, round(i,1)))
+    x_start = plot_window_margin
+    y_start = plot_window_margin + plot_dim_y * 0.5
+    tract_plot2_svg_texts.append(Text(x_start, y_start, 'Helvetica', 15, '#545860', 'middle', 'middle', 'rotate(-90 {},{})'.format(x_start, y_start), 'Proportion of genome covered by single-topology tracts of at least this size'))
+
+    # Add the path.
+    x_start = plot_window_margin + plot_window_left_space
+    y_start = plot_window_margin
+    tract_plot2_svg_path_stroke = Path(x_start, y_start, 'none', '#f5902f', 5, 1, False)
+    tract_plot2_svg_path_fill = Path(x_start, y_start, '#ede7d4', 'none', 0, 1, True)
+    y_old = y_start
+    all_tracts_smaller_than_threshold = True
+    for z in range(len(sorted_tract_sizes)):
+        if sorted_tract_sizes[z] < tract_plot2_max_size:
+            x = plot_window_margin + plot_window_left_space + (sorted_tract_sizes[z]/tract_plot2_max_size) * plot_dim_x
+            y_new = plot_window_margin + plot_dim_y - plot_dim_y * proportions_covered_by_tracts[z]
+            tract_plot2_svg_path_stroke.add_point(x, y_old)
+            tract_plot2_svg_path_fill.add_point(x, y_old)
+            tract_plot2_svg_path_stroke.add_point(x, y_new)
+            tract_plot2_svg_path_fill.add_point(x, y_new)
+            y_old = y_new
+        else:
+            all_tracts_smaller_than_threshold = False
+    if all_tracts_smaller_than_threshold == False:
+        x = plot_window_margin + plot_window_left_space + plot_dim_x
+        y = y_old
+        tract_plot2_svg_path_stroke.add_point(x, y)
+        tract_plot2_svg_path_fill.add_point(x, y)
+        y = plot_window_margin + plot_dim_y
+        tract_plot2_svg_path_fill.add_point(x, y)
+    x = plot_window_margin + plot_window_left_space
+    y = plot_window_margin + plot_dim_y
+    tract_plot2_svg_path_fill.add_point(x, y)
+
+    # Insert the svg elements into tract plot 2.
+    tract_plot2_svg_string = '          <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}\" xmlns:xlink=\"htttp://www.w3.org/1999/xlink\">\n'.format(plot_window_width, plot_window_height, plot_window_width, plot_window_height)
+    tract_plot2_svg_string += '            <defs>\n'
+    tract_plot2_svg_string += '              <linearGradient id="lin_grad2" x1="0%" y1="0%" x2="100%" y2="0%">\n'
+    tract_plot2_svg_string += '                <stop offset=\"0%\" style=\"stop-color:#ede7d4;stop-opacity:1\" />\n'
+    tract_plot2_svg_string += '                <stop offset=\"100%\" style=\"stop-color:white;stop-opacity:1\" />\n'
+    tract_plot2_svg_string += '              </linearGradient>\n'
+    tract_plot2_svg_string += '              <marker id=\"head\" orient=\"auto\" markerWidth=\"4\" markerHeight=\"8\" refX=\"0.1\" refY=\"4\">\n'
+    tract_plot2_svg_string += '                <path d=\"M0,0 V8 L4,4 Z\" fill=\"#545860\" />\n'
+    tract_plot2_svg_string += '              <marker>\n'
+    tract_plot2_svg_string += '            </defs>\n'
+    tract_plot2_svg_string += '            <path d=\"M {0} {5} L {1} {5} A {0},{0} 0 0 1 {2},{0} L {2} {3} A {0},{0} 0 0 1 {1},{4} L {0} {4} A {0},{0} 0 0 1 {5},{3} L {5} {0} A {0},{0} 0 0 1 {0} {5} z\" fill=\"#ede7d4\" stroke=\"#545860\" stroke-width=\"2\" fill-opacity=\"0.15\" />'.format(corner_radius, plot_window_width-corner_radius, plot_window_width-stroke_shift_to_inside, plot_window_height-corner_radius, plot_window_height-stroke_shift_to_inside, stroke_shift_to_inside)
+
+    tract_plot2_svg_path_fill_svg = tract_plot2_svg_path_fill.to_svg().replace('fill=\"#ede7d4\"','fill=\"url(#lin_grad2)\"')
+    tract_plot2_svg_string += "            {}\n".format(tract_plot2_svg_path_fill_svg)
+    for l in tract_plot2_svg_lines:
+        tract_plot2_svg_string += '            {}\n'.format(l.to_svg())
+    for t in tract_plot2_svg_texts:
+        tract_plot2_svg_string += '            {}\n'.format(t.to_svg())
+    x_start = plot_window_margin + plot_window_left_space
+    x_end = x_start + plot_dim_x
+    y_start = plot_window_margin + plot_dim_y
+    y_end = y_start
+    tract_plot2_svg_string += '            <line marker-end=\"url(#head)\" x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"{}\" stroke-width=\"{}\" stroke-opacity=\"{}\" />'.format(round(x_start,3), round(y_start,3), round(x_end,3), round(y_end,3), '#545860', 2, 1)
+    x_start = plot_window_margin + plot_window_left_space
+    x_end = x_start
+    y_end = plot_window_margin
+    y_start = y_end + plot_dim_y
+    tract_plot2_svg_string += '            <line marker-end=\"url(#head)\" x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"{}\" stroke-width=\"{}\" stroke-opacity=\"{}\" />'.format(round(x_start,3), round(y_start,3), round(x_end,3), round(y_end,3), '#545860', 2, 1)
+    tract_plot2_svg_string += '            {}\n'.format(tract_plot2_svg_path_stroke.to_svg())
+    tract_plot2_svg_string += '          </svg>\n'
+
+    # Feedback.
+    print(' done.')
+
+    # Feedback.
+    print('    Calculating c-gene statistics...', end='', flush=True)
+
+    # Calculate the total length of regions in which breakpoint-free alignments could start.
+    c_gene_breakpoint_free_100_bp_region_startpoints = 0
+    c_gene_breakpoint_free_200_bp_region_startpoints = 0
+    c_gene_breakpoint_free_500_bp_region_startpoints = 0
+    c_gene_breakpoint_free_1000_bp_region_startpoints = 0
+    c_gene_breakpoint_free_2000_bp_region_startpoints = 0
+    c_gene_breakpoint_free_5000_bp_region_startpoints = 0
+    c_gene_breakpoint_free_10000_bp_region_startpoints = 0
+    c_gene_breakpoint_free_20000_bp_region_startpoints = 0
+    c_gene_breakpoint_free_50000_bp_region_startpoints = 0
+    c_gene_breakpoint_free_100000_bp_region_startpoints = 0
+    c_gene_breakpoint_free_200000_bp_region_startpoints = 0
+    c_gene_breakpoint_free_500000_bp_region_startpoints = 0
+    for s in c_gene_sizes:
+        if s >= 100:
+            c_gene_breakpoint_free_100_bp_region_startpoints += s - 100
+            if s >= 200:
+                c_gene_breakpoint_free_200_bp_region_startpoints += s - 200
+                if s >= 500:
+                    c_gene_breakpoint_free_500_bp_region_startpoints += s - 500
+                    if s >= 1000:
+                        c_gene_breakpoint_free_1000_bp_region_startpoints += s - 1000
+                        if s >= 2000:
+                            c_gene_breakpoint_free_2000_bp_region_startpoints += s - 2000
+                            if s >= 5000:
+                                c_gene_breakpoint_free_5000_bp_region_startpoints += s - 5000
+                                if s >= 10000:
+                                    c_gene_breakpoint_free_10000_bp_region_startpoints += s - 10000
+                                    if s >= 20000:
+                                        c_gene_breakpoint_free_20000_bp_region_startpoints += s - 20000
+                                        if s >= 50000:
+                                            c_gene_breakpoint_free_50000_bp_region_startpoints += s - 50000
+                                            if s >= 100000:
+                                                c_gene_breakpoint_free_100000_bp_region_startpoints += s - 100000
+                                                if s >= 200000:
+                                                    c_gene_breakpoint_free_200000_bp_region_startpoints += s - 200000
+                                                    if s >= 500000:
+                                                        c_gene_breakpoint_free_500000_bp_region_startpoints += s - 500000
+
+    # Feedback.
+    print(' done.')
+
+    # Feedback.
+    print('    Calculating single-topology tract statistics...', end='', flush=True)
+
+    # Calculate the total length of regions in which breakpoint-free alignments could start.
+    tract_breakpoint_free_100_bp_region_startpoints = 0
+    tract_breakpoint_free_200_bp_region_startpoints = 0
+    tract_breakpoint_free_500_bp_region_startpoints = 0
+    tract_breakpoint_free_1000_bp_region_startpoints = 0
+    tract_breakpoint_free_2000_bp_region_startpoints = 0
+    tract_breakpoint_free_5000_bp_region_startpoints = 0
+    tract_breakpoint_free_10000_bp_region_startpoints = 0
+    tract_breakpoint_free_20000_bp_region_startpoints = 0
+    tract_breakpoint_free_50000_bp_region_startpoints = 0
+    tract_breakpoint_free_100000_bp_region_startpoints = 0
+    tract_breakpoint_free_200000_bp_region_startpoints = 0
+    tract_breakpoint_free_500000_bp_region_startpoints = 0
+    for s in tract_sizes:
+        if s >= 100:
+            tract_breakpoint_free_100_bp_region_startpoints += s - 100
+            if s >= 200:
+                tract_breakpoint_free_200_bp_region_startpoints += s - 200
+                if s >= 500:
+                    tract_breakpoint_free_500_bp_region_startpoints += s - 500
+                    if s >= 1000:
+                        tract_breakpoint_free_1000_bp_region_startpoints += s - 1000
+                        if s >= 2000:
+                            tract_breakpoint_free_2000_bp_region_startpoints += s - 2000
+                            if s >= 5000:
+                                tract_breakpoint_free_5000_bp_region_startpoints += s - 5000
+                                if s >= 10000:
+                                    tract_breakpoint_free_10000_bp_region_startpoints += s - 10000
+                                    if s >= 20000:
+                                        tract_breakpoint_free_20000_bp_region_startpoints += s - 20000
+                                        if s >= 50000:
+                                            tract_breakpoint_free_50000_bp_region_startpoints += s - 50000
+                                            if s >= 100000:
+                                                tract_breakpoint_free_100000_bp_region_startpoints += s - 100000
+                                                if s >= 200000:
+                                                    tract_breakpoint_free_200000_bp_region_startpoints += s - 200000
+                                                    if s >= 500000:
+                                                        tract_breakpoint_free_500000_bp_region_startpoints += s - 500000
+
+    # Feedback.
+    print(' done.')
+
+# Feedback.
+print('    Preparing the html output...', end='', flush=True)
+
+# Prepare the html output.
+html_string = '<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\"\n'
+html_string += '\"http://www.w3.org/TR/html4/loose.dtd\">\n'
+html_string += '<html>\n'
+html_string += '  <head>\n'
+html_string += '    <title>c-genie results</title>\n'
+html_string += '    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=\"utf-8\">\n'
+html_string += '    <link rel=\"stylesheet\" href=\"http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css\">\n'
+html_string += '    <script src=\"https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js\"></script>\n'
+html_string += '    <script src=\"http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js\"></script>\n'
+html_string += '\n'
+html_string += '    <style type=\"text/css\">\n'
+html_string += '      a:link { text-decoration:none; color:#545860; }\n'
+html_string += '      a:visited { text-decoration:none; color:#545860; }\n'
+html_string += '      a:hover { text-decoration:none; color:#ffffff; background-color:#545860; }\n'
+html_string += '      a:active { text-decoration:none; color:#ffffff; background-color:#545860; }\n'
+html_string += '      a:focus { text-decoration:none; color:#ffffff; background-color:#545860; }\n'
+html_string += '      #relativeSVG { position:relative; width:840px; height:236px; z-index:2 }\n'
+html_string += '      #absoluteAst { position:absolute; top:20px; left:20px; width:20px; height:20px; z-index:1; background-color:#e05030 }\n'
+html_string += '      td { font-family:helvetica; font-size:12px }\n'
+html_string += '      tr.spaceUnder > td { padding-bottom: 1em; }\n'
+html_string += '      tr.doubleSpaceUnder > td { padding-bottom: 2em; }\n'
+html_string += '      tr.largeSpaceUnder > td { padding-bottom: 8em; }\n'
+html_string += '      tr.smallSpaceUnder > td { padding-bottom: 0.2em; }\n'
+html_string += '      tr.spaceOver > td { padding-top: 1em; }\n'
+html_string += '      tr.spaceOverAndLargeSpaceUnder > td { padding-top: 1em; padding-bottom: 8em; }\n'
+html_string += '      body {color:#545860;}\n'
+html_string += '    </style>\n'
+html_string += '\n'
+html_string += '    <script type=\"text/javascript\">\n'
+html_string += '      <!--\n'
+html_string += '        function legend_toggle () {\n'
+html_string += '          if(document.getElementById(\"legend\").style.display == \"none\") {\n'
+html_string += '            document.getElementById(\"legend\").style.display = \"inline\";\n'
+html_string += '          } else {\n'
+html_string += '            document.getElementById(\"legend\").style.display = \"none\";\n'
+html_string += '          }\n'
+html_string += '          if(document.getElementById(\"show\").style.display == \"none\") {\n'
+html_string += '            document.getElementById(\"show\").style.display = \"inline\";\n'
+html_string += '          } else {\n'
+html_string += '            document.getElementById(\"show\").style.display = \"none\";\n'
+html_string += '          }\n'
+html_string += '          if(document.getElementById(\"hide\").style.display == \"none\") {\n'
+html_string += '            document.getElementById(\"hide\").style.display = \"inline\";\n'
+html_string += '          } else {\n'
+html_string += '            document.getElementById(\"hide\").style.display = \"none\";\n'
+html_string += '          }\n'
+html_string += '        }\n'
+html_string += '      //-->\n'
+html_string += '    </script>\n'
+html_string += '\n'
+html_string += '    <script>\n'
+html_string += '    $(document).ready(function(){\n'
+html_string += '      $(\'[data-toggle=\"tooltip\"]\').tooltip();\n'
+html_string += '    });\n'
+html_string += '    </script>\n'
+html_string += '  </head>\n'
+html_string += '\n'
+html_string += '  <body>\n'
+html_string += '    <div align=\"center\">\n'
+html_string += '      <table width=\"840\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\">\n'
+html_string += '        <tr class=\"doubleSpaceUnder\">\n'
+html_string += '          <td></td>\n'
+html_string += '        </tr>\n'
+html_string += '        <tr>\n'
+html_string += '          <td style=\"font-family:helvetica; font-size:54px; font-weight:bold\">\n'
+html_string += '            <svg width=\"50\" height=\"50\">\n'
+html_string += '              <defs>\n'
+html_string += '                <radialGradient id=\"rad_grad_s\" cx=\"50%\" cy=\"50%\" r=\"50%\" fx=\"50%\" fy=\"50%\">\n'
+html_string += '                  <stop offset=\"0%\" style=\"stop-color:#ede7d4;stop-opacity:1\" />\n'
+html_string += '                  <stop offset=\"100%\" style=\"stop-color:white;stop-opacity:1\" />\n'
+html_string += '                </radialGradient>\n'
+html_string += '                <clipPath id=\"cut_s\">\n'
+html_string += '                  <rect x=\"0\" y=\"0\" width=\"50\" height=\"50\" />\n'
+html_string += '                </clipPath>\n'
+html_string += '              </defs>\n'
+html_string += '              <rect x=\"-50\" y=\"0\" width=\"100\" height=\"100\" fill=\"url(#rad_grad_s)\" clip-path=\"url(#cut_s)\"/>\n'
+html_string += '              <line fill=\"none\" stroke=\"#93A1A1\" stroke-width=\"0.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" x1=\"1\" y1=\"13.125\" x2=\"1\" y2=\"13.125\"/>\n'
+html_string += '              <line fill=\"none\" stroke=\"#93A1A1\" stroke-width=\"0.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-dasharray=\"0,1.0025\" x1=\"2.002\" y1=\"13.125\" x2=\"12.529\" y2=\"13.125\"/>\n'
+html_string += '              <line fill=\"none\" stroke=\"#93A1A1\" stroke-width=\"0.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" x1=\"13.03\" y1=\"13.125\" x2=\"13.03\" y2=\"13.125\"/>\n'
+html_string += '              <line fill=\"none\" stroke=\"#93A1A1\" stroke-width=\"0.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-dasharray=\"0,0.9965\" x1=\"13.03\" y1=\"14.121\" x2=\"13.03\" y2=\"48.502\"/>\n'
+html_string += '              <line fill=\"none\" stroke=\"#93A1A1\" stroke-width=\"0.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" x1=\"13.03\" y1=\"49\" x2=\"13.03\" y2=\"49\"/>\n'
+html_string += '              <line fill=\"none\" stroke=\"#93A1A1\" stroke-width=\"0.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" x1=\"13.03\" y1=\"27.625\" x2=\"13.03\" y2=\"27.625\"/>\n'
+html_string += '              <line fill=\"none\" stroke=\"#93A1A1\" stroke-width=\"0.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-dasharray=\"0,1.0025\" x1=\"14.033\" y1=\"27.625\" x2=\"24.559\" y2=\"27.625\"/>\n'
+html_string += '              <line fill=\"none\" stroke=\"#93A1A1\" stroke-width=\"0.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" x1=\"25.061\" y1=\"27.625\" x2=\"25.061\" y2=\"27.625\"/>\n'
+html_string += '              <line fill=\"none\" stroke=\"#93A1A1\" stroke-width=\"0.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-dasharray=\"0,1.0179\" x1=\"25.061\" y1=\"28.643\" x2=\"25.061\" y2=\"48.491\"/>\n'
+html_string += '              <line fill=\"none\" stroke=\"#93A1A1\" stroke-width=\"0.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" x1=\"25.061\" y1=\"49\" x2=\"25.061\" y2=\"49\"/>\n'
+html_string += '              <line fill=\"none\" stroke=\"#93A1A1\" stroke-width=\"0.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" x1=\"25.061\" y1=\"34.875\" x2=\"25.061\" y2=\"34.875\"/>\n'
+html_string += '              <line fill=\"none\" stroke=\"#93A1A1\" stroke-width=\"0.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-dasharray=\"0,1.0025\" x1=\"26.062\" y1=\"34.875\" x2=\"36.589\" y2=\"34.875\"/>\n'
+html_string += '              <line fill=\"none\" stroke=\"#93A1A1\" stroke-width=\"0.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" x1=\"37.091\" y1=\"34.875\" x2=\"37.091\" y2=\"34.875\"/>\n'
+html_string += '              <line fill=\"none\" stroke=\"#93A1A1\" stroke-width=\"0.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-dasharray=\"0,1.0089\" x1=\"37.091\" y1=\"35.884\" x2=\"37.091\" y2=\"48.495\"/>\n'
+html_string += '              <line fill=\"none\" stroke=\"#93A1A1\" stroke-width=\"0.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" x1=\"37.091\" y1=\"49\" x2=\"37.091\" y2=\"49\"/>\n'
+html_string += '              <line fill=\"none\" stroke=\"#93A1A1\" stroke-width=\"0.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" x1=\"37.091\" y1=\"40.5\" x2=\"37.091\" y2=\"40.5\"/>\n'
+html_string += '              <line fill=\"none\" stroke=\"#93A1A1\" stroke-width=\"0.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-dasharray=\"0,1.0025\" x1=\"38.094\" y1=\"40.5\" x2=\"48.62\" y2=\"40.5\"/>\n'
+html_string += '              <line fill=\"none\" stroke=\"#93A1A1\" stroke-width=\"0.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" x1=\"49.122\" y1=\"40.5\" x2=\"49.122\" y2=\"40.5\"/>\n'
+html_string += '              <line fill=\"none\" stroke=\"#93A1A1\" stroke-width=\"0.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-dasharray=\"0,0.9444\" x1=\"49.122\" y1=\"41.443\" x2=\"49.122\" y2=\"48.527\"/>\n'
+html_string += '              <line fill=\"none\" stroke=\"#93A1A1\" stroke-width=\"0.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" x1=\"49.122\" y1=\"49\" x2=\"49.122\" y2=\"49\"/>\n'
+html_string += '              <polyline fill=\"none\" stroke=\"#545860\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-miterlimit=\"10\" points=\"1,1 1,49 49,49 \"/>\n'
+html_string += '              <path fill=\"none\" stroke=\"#F5902F\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-miterlimit=\"10\" d=\"M49,38.577C25.389,33.588,8.184,25.003,3,14.872\"/>\n'
+html_string += '              <path fill=\"none\" stroke=\"#32AACE\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-miterlimit=\"10\" d=\"M49,42.577C25.389,35.062,8.184,22.131,3,6.872\"/>\n'
+html_string += '            </svg>\n'
+html_string += '            <a name=\"c-genie\" href=\"http://www.evoinformatics.eu\" style=\"color:#545860; text-decoration:none; background-color:#ffffff\">c-genie</a><br><br>\n'
+html_string += '          </td>\n'
+html_string += '        </tr>\n'
+
+# The summary section.
+html_string += '        <tr class=\"smallSpaceUnder\">\n'
+html_string += '          <td style=\"color:#545860; font-size:30px; font-weight:bold\">Summary</td>\n'
+html_string += '        </tr>\n'
+html_string += '        <tr class=\"largeSpaceUnder\">\n'
+html_string += '          <td>\n'
+html_string += '            <table width=\"840\" border=\"0\" cellpadding=\"0\" cellspacing=\"1\">\n'
+html_string += '              <tr>\n'
+html_string += '              </tr>\n'
+html_string += '                <td width=\"160\" style=\"font-weight:bold\">Tree file</td>\n'
+html_string += '                <td><a href=\"{}\">{}</a></td>\n'.format(infile.name, infile.name.split('/')[-1])
+html_string += '              </tr>\n'
+html_string += '              </tr>\n'
+html_string += '                <td width=\"160\" style=\"font-weight:bold\">Tree age</td>\n'
+html_string += '                <td>{} myr</td>\n'.format(round(tree_origin,3))
+html_string += '              </tr>\n'
+html_string += '              </tr>\n'
+html_string += '                <td width=\"160\" style=\"font-weight:bold\">Population size</td>\n'
+html_string += '                <td>{}</td>\n'.format(pop_size)
+html_string += '              </tr>\n'
+html_string += '              </tr>\n'
+html_string += '                <td width=\"160\" style=\"font-weight:bold\">Generation time</td>\n'
+html_string += '                <td>{} years</td>\n'.format(gen_time)
+html_string += '              </tr>\n'
+if rec_map == None:
+    html_string += '              </tr>\n'
+    html_string += '                <td width=\"160\" style=\"font-weight:bold\">Recombination rate</td>\n'
+    rec_rate_string = str(rec_rate)
+    if "e" in rec_rate_string:
+        rec_rate_string_convert = "{:.3f}".format(float(rec_rate_string.split("e")[0])) + " &times; 10<sup>" + str(int(rec_rate_string.split("e")[1])) + "</sup>"
+    else:
+        rec_rate_string_convert = rec_rate_string
+    html_string += '                <td>{} per generation</td>\n'.format(rec_rate_string_convert)
+    html_string += '              </tr>\n'
+    html_string += '              </tr>\n'
+    html_string += '                <td width=\"160\" style=\"font-weight:bold\">Chromosome length</td>\n'
+    html_string += '                <td>{} bp</td>\n'.format(chr_length)
+    html_string += '              </tr>\n'
+else:
+    html_string += '              </tr>\n'
+    html_string += '                <td width=\"160\" style=\"font-weight:bold\">Recombination map</td>\n'
+    html_string += '                <td><a href=\"{}\">{}</a></td>\n'.format(rec_map, rec_map.split('/')[-1])
+    html_string += '              </tr>\n'
+    html_string += '              </tr>\n'
+    html_string += '                <td width=\"160\" style=\"font-weight:bold\">Chromosome length</td>\n'
+    html_string += '                <td>{} bp</td>\n'.format(chr_length)
+    html_string += '              </tr>\n'
+if exclude_c_genes == False:
+    html_string += '              </tr>\n'
+    html_string += '                <td width=\"160\" style=\"font-weight:bold\">Target # of c-genes</td>\n'
+    html_string += '                <td>{}</td>\n'.format(target_n_c_genes)
+    html_string += '              </tr>\n'
+    html_string += '              </tr>\n'
+    html_string += '                <td width=\"160\" style=\"font-weight:bold\"># chromosomes simulated</td>\n'
+    html_string += '                <td>{}</td>\n'.format(n_chr_simulated)
+    html_string += '              </tr>\n'
+html_string += '            </table>\n'
+html_string += '          </td>\n'
+html_string += '        </tr>\n'
+
+# Only include c-gene and topology-tract output if requested.
+if exclude_c_genes == False:
+
+    # The c-genes section.
+    html_string += '        <tr class=\"smallSpaceUnder\">\n'
+    html_string += '          <td style=\"font-size:30px; font-weight:bold\"><a href=\"https://www.jstor.org/stable/2419811\">c-genes</a></td>\n'
+    html_string += '        </tr>\n'
+    html_string += '        <tr class=\"spaceUnder\">\n'
+    html_string += '          <td>\n'
+    html_string += '            <table width=\"840\" border=\"0\" cellpadding=\"0\" cellspacing=\"1\">\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td width=\"160\" style=\"font-weight:bold\"># c-genes</td>\n'
+    html_string += '                <td>{}</td>\n'.format(len(c_gene_sizes))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td width=\"160\" style=\"font-weight:bold\">Mean c-gene size</td>\n'
+    html_string += '                <td>{}</td>\n'.format(round(np.mean(c_gene_sizes),3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td width=\"160\" style=\"font-weight:bold\">Median c-gene size</td>\n'
+    html_string += '                <td>{}</td>\n'.format(round(c_gene_sizes_median,3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td width=\"160\" style=\"font-weight:bold\">Minimum c-gene size</td>\n'
+    html_string += '                <td>{}</td>\n'.format(round(min(c_gene_sizes),3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td width=\"160\" style=\"font-weight:bold\">Maximum c-gene size</td>\n'
+    html_string += '                <td>{}</td>\n'.format(round(max(c_gene_sizes),3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td width=\"160\" style=\"font-weight:bold\">Summed c-gene size</td>\n'
+    html_string += '                <td>{}</td>\n'.format(round(c_gene_sizes_sum,3))
+    html_string += '              </tr>\n'
+    html_string += '            </table>\n'
+    html_string += '          </td>\n'
+    html_string += '        </tr>\n'
+    html_string += '        <tr>\n'
+    html_string += '          <td align=\"center\">\n'
+    html_string += '{}\n'.format(c_gene_plot1_svg_string)
+    html_string += '          </td>\n'
+    html_string += '        </tr>\n'
+    html_string += '        <tr class=\"smallSpaceUnder\">\n'
+    html_string += '          <td>\n'
+    html_string += '          <br>\n'
+    html_string += '          </td>\n'
+    html_string += '        </tr>\n'
+    html_string += '        <tr>\n'
+    html_string += '          <td align=\"center\">\n'
+    html_string += '{}\n'.format(c_gene_plot2_svg_string)
+    html_string += '          </td>\n'
+    html_string += '        </tr>\n'
+    html_string += '        <tr class=\"spaceOverAndLargeSpaceUnder\">\n'
+    html_string += '          <td>\n'
+    html_string += '            <table width=\"840\" border=\"0\" cellpadding=\"0\" cellspacing=\"1\">\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td width=\"160\" style=\"font-weight:bold\">Alignment length</td>\n'
+    html_string += '                <td width=\"340\" style=\"font-weight:bold\">Probability that alignment is within one c-gene</td>\n'
+    html_string += '                <td width=\"340\" style=\"font-weight:bold\">Mean number of c-gene breakpoints in alignment</td>\n'
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td style=\"font-weight:bold\">100 bp</td>\n'
+    html_string += '                <td>{:.3f}</td>\n'.format(round(c_gene_breakpoint_free_100_bp_region_startpoints/float(c_gene_sizes_sum),3))
+    html_string += '                <td>{:.3f}</td>\n'.format(round((len(c_gene_sizes)-1)*(100/c_gene_sizes_sum),3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td style=\"font-weight:bold\">200 bp</td>\n'
+    html_string += '                <td>{:.3f}</td>\n'.format(round(c_gene_breakpoint_free_200_bp_region_startpoints/float(c_gene_sizes_sum),3))
+    html_string += '                <td>{:.3f}</td>\n'.format(round((len(c_gene_sizes)-1)*(200/c_gene_sizes_sum),3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td style=\"font-weight:bold\">500 bp</td>\n'
+    html_string += '                <td>{:.3f}</td>\n'.format(round(c_gene_breakpoint_free_500_bp_region_startpoints/float(c_gene_sizes_sum),3))
+    html_string += '                <td>{:.3f}</td>\n'.format(round((len(c_gene_sizes)-1)*(500/c_gene_sizes_sum),3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td style=\"font-weight:bold\">1000 bp</td>\n'
+    html_string += '                <td>{:.3f}</td>\n'.format(round(c_gene_breakpoint_free_1000_bp_region_startpoints/float(c_gene_sizes_sum),3))
+    html_string += '                <td>{:.3f}</td>\n'.format(round((len(c_gene_sizes)-1)*(1000/c_gene_sizes_sum),3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td style=\"font-weight:bold\">2000 bp</td>\n'
+    html_string += '                <td>{:.3f}</td>\n'.format(round(c_gene_breakpoint_free_2000_bp_region_startpoints/float(c_gene_sizes_sum),3))
+    html_string += '                <td>{:.3f}</td>\n'.format(round((len(c_gene_sizes)-1)*(2000/c_gene_sizes_sum),3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td style=\"font-weight:bold\">5000 bp</td>\n'
+    html_string += '                <td>{:.3f}</td>\n'.format(round(c_gene_breakpoint_free_5000_bp_region_startpoints/float(c_gene_sizes_sum),3))
+    html_string += '                <td>{:.3f}</td>\n'.format(round((len(c_gene_sizes)-1)*(5000/c_gene_sizes_sum),3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td style=\"font-weight:bold\">10000 bp</td>\n'
+    html_string += '                <td>{:.3f}</td>\n'.format(round(c_gene_breakpoint_free_10000_bp_region_startpoints/float(c_gene_sizes_sum),3))
+    html_string += '                <td>{:.3f}</td>\n'.format(round((len(c_gene_sizes)-1)*(10000/c_gene_sizes_sum),3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td style=\"font-weight:bold\">20000 bp</td>\n'
+    html_string += '                <td>{:.3f}</td>\n'.format(round(c_gene_breakpoint_free_20000_bp_region_startpoints/float(c_gene_sizes_sum),3))
+    html_string += '                <td>{:.3f}</td>\n'.format(round((len(c_gene_sizes)-1)*(20000/c_gene_sizes_sum),3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td style=\"font-weight:bold\">50000 bp</td>\n'
+    html_string += '                <td>{:.3f}</td>\n'.format(round(c_gene_breakpoint_free_50000_bp_region_startpoints/float(c_gene_sizes_sum),3))
+    html_string += '                <td>{:.3f}</td>\n'.format(round((len(c_gene_sizes)-1)*(50000/c_gene_sizes_sum),3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td style=\"font-weight:bold\">100000 bp</td>\n'
+    html_string += '                <td>{:.3f}</td>\n'.format(round(c_gene_breakpoint_free_100000_bp_region_startpoints/float(c_gene_sizes_sum),3))
+    html_string += '                <td>{:.3f}</td>\n'.format(round((len(c_gene_sizes)-1)*(100000/c_gene_sizes_sum),3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td style=\"font-weight:bold\">200000 bp</td>\n'
+    html_string += '                <td>{:.3f}</td>\n'.format(round(c_gene_breakpoint_free_200000_bp_region_startpoints/float(c_gene_sizes_sum),3))
+    html_string += '                <td>{:.3f}</td>\n'.format(round((len(c_gene_sizes)-1)*(200000/c_gene_sizes_sum),3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td style=\"font-weight:bold\">500000 bp</td>\n'
+    html_string += '                <td>{:.3f}</td>\n'.format(round(c_gene_breakpoint_free_500000_bp_region_startpoints/float(c_gene_sizes_sum),3))
+    html_string += '                <td>{:.3f}</td>\n'.format(round((len(c_gene_sizes)-1)*(500000/c_gene_sizes_sum),3))
+    html_string += '              </tr>\n'
+    html_string += '            </table>\n'
+    html_string += '          </td>\n'
+    html_string += '        </tr>\n'
+
+    # The single-topology tracts section.
+    html_string += '        <tr class=\"smallSpaceUnder\">\n'
+    html_string += '          <td style=\"font-size:30px; font-weight:bold\">Single-topology tracts</td>\n'
+    html_string += '        </tr>\n'
+    html_string += '        <tr class=\"spaceUnder\">\n'
+    html_string += '          <td>\n'
+    html_string += '            <table width=\"840\" border=\"0\" cellpadding=\"0\" cellspacing=\"1\">\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td width=\"160\" style=\"font-weight:bold\"># single-topology tracts</td>\n'
+    html_string += '                <td>{}</td>\n'.format(len(tract_sizes))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td width=\"160\" style=\"font-weight:bold\">Mean tract size</td>\n'
+    html_string += '                <td>{}</td>\n'.format(round(tract_sizes_mean,3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td width=\"160\" style=\"font-weight:bold\">Median tract size</td>\n'
+    html_string += '                <td>{}</td>\n'.format(round(tract_sizes_median,3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td width=\"160\" style=\"font-weight:bold\">Minimum tract size</td>\n'
+    html_string += '                <td>{}</td>\n'.format(round(min(tract_sizes),3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td width=\"160\" style=\"font-weight:bold\">Maximum tract size</td>\n'
+    html_string += '                <td>{}</td>\n'.format(round(max(tract_sizes),3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td width=\"160\" style=\"font-weight:bold\">Summed tract size</td>\n'
+    html_string += '                <td>{}</td>\n'.format(round(tract_sizes_sum,3))
+    html_string += '              </tr>\n'
+    html_string += '            </table>\n'
+    html_string += '          </td>\n'
+    html_string += '        </tr>\n'
+    html_string += '        <tr>\n'
+    html_string += '          <td align=\"center\">\n'
+    html_string += '{}\n'.format(tract_plot1_svg_string)
+    html_string += '          </td>\n'
+    html_string += '        </tr>\n'
+    html_string += '        <tr class=\"smallSpaceUnder\">\n'
+    html_string += '          <td>\n'
+    html_string += '          <br>\n'
+    html_string += '          </td>\n'
+    html_string += '        </tr>\n'
+    html_string += '        <tr>\n'
+    html_string += '          <td align=\"center\">\n'
+    html_string += '{}\n'.format(tract_plot2_svg_string)
+    html_string += '          </td>\n'
+    html_string += '        </tr>\n'
+    html_string += '        <tr class=\"spaceOverAndLargeSpaceUnder\">\n'
+    html_string += '          <td>\n'
+    html_string += '            <table width=\"840\" border=\"0\" cellpadding=\"0\" cellspacing=\"1\">\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td width=\"160\" style=\"font-weight:bold\">Alignment length</td>\n'
+    html_string += '                <td width=\"340\" style=\"font-weight:bold\">Probability that alignment is within one tract</td>\n'
+    html_string += '                <td width=\"340\" style=\"font-weight:bold\">Mean number of topology breakpoints in alignment</td>\n'
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td style=\"font-weight:bold\">100 bp</td>\n'
+    html_string += '                <td>{:.3f}</td>\n'.format(round(tract_breakpoint_free_100_bp_region_startpoints/float(tract_sizes_sum),3))
+    html_string += '                <td>{:.3f}</td>\n'.format(round((len(tract_sizes)-1)*(100/tract_sizes_sum),3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td style=\"font-weight:bold\">200 bp</td>\n'
+    html_string += '                <td>{:.3f}</td>\n'.format(round(tract_breakpoint_free_200_bp_region_startpoints/float(tract_sizes_sum),3))
+    html_string += '                <td>{:.3f}</td>\n'.format(round((len(tract_sizes)-1)*(200/tract_sizes_sum),3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td style=\"font-weight:bold\">500 bp</td>\n'
+    html_string += '                <td>{:.3f}</td>\n'.format(round(tract_breakpoint_free_500_bp_region_startpoints/float(tract_sizes_sum),3))
+    html_string += '                <td>{:.3f}</td>\n'.format(round((len(tract_sizes)-1)*(500/tract_sizes_sum),3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td style=\"font-weight:bold\">1000 bp</td>\n'
+    html_string += '                <td>{:.3f}</td>\n'.format(round(tract_breakpoint_free_1000_bp_region_startpoints/float(tract_sizes_sum),3))
+    html_string += '                <td>{:.3f}</td>\n'.format(round((len(tract_sizes)-1)*(1000/tract_sizes_sum),3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td style=\"font-weight:bold\">2000 bp</td>\n'
+    html_string += '                <td>{:.3f}</td>\n'.format(round(tract_breakpoint_free_2000_bp_region_startpoints/float(tract_sizes_sum),3))
+    html_string += '                <td>{:.3f}</td>\n'.format(round((len(tract_sizes)-1)*(2000/tract_sizes_sum),3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td style=\"font-weight:bold\">5000 bp</td>\n'
+    html_string += '                <td>{:.3f}</td>\n'.format(round(tract_breakpoint_free_5000_bp_region_startpoints/float(tract_sizes_sum),3))
+    html_string += '                <td>{:.3f}</td>\n'.format(round((len(tract_sizes)-1)*(5000/tract_sizes_sum),3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td style=\"font-weight:bold\">10000 bp</td>\n'
+    html_string += '                <td>{:.3f}</td>\n'.format(round(tract_breakpoint_free_10000_bp_region_startpoints/float(tract_sizes_sum),3))
+    html_string += '                <td>{:.3f}</td>\n'.format(round((len(tract_sizes)-1)*(10000/tract_sizes_sum),3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td style=\"font-weight:bold\">20000 bp</td>\n'
+    html_string += '                <td>{:.3f}</td>\n'.format(round(tract_breakpoint_free_20000_bp_region_startpoints/float(tract_sizes_sum),3))
+    html_string += '                <td>{:.3f}</td>\n'.format(round((len(tract_sizes)-1)*(20000/tract_sizes_sum),3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td style=\"font-weight:bold\">50000 bp</td>\n'
+    html_string += '                <td>{:.3f}</td>\n'.format(round(tract_breakpoint_free_50000_bp_region_startpoints/float(tract_sizes_sum),3))
+    html_string += '                <td>{:.3f}</td>\n'.format(round((len(tract_sizes)-1)*(50000/tract_sizes_sum),3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td style=\"font-weight:bold\">100000 bp</td>\n'
+    html_string += '                <td>{:.3f}</td>\n'.format(round(tract_breakpoint_free_100000_bp_region_startpoints/float(tract_sizes_sum),3))
+    html_string += '                <td>{:.3f}</td>\n'.format(round((len(tract_sizes)-1)*(100000/tract_sizes_sum),3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td style=\"font-weight:bold\">200000 bp</td>\n'
+    html_string += '                <td>{:.3f}</td>\n'.format(round(tract_breakpoint_free_200000_bp_region_startpoints/float(tract_sizes_sum),3))
+    html_string += '                <td>{:.3f}</td>\n'.format(round((len(tract_sizes)-1)*(200000/tract_sizes_sum),3))
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td style=\"font-weight:bold\">500000 bp</td>\n'
+    html_string += '                <td>{:.3f}</td>\n'.format(round(tract_breakpoint_free_500000_bp_region_startpoints/float(tract_sizes_sum),3))
+    html_string += '                <td>{:.3f}</td>\n'.format(round((len(tract_sizes)-1)*(500000/tract_sizes_sum),3))
+    html_string += '              </tr>\n'
+    html_string += '            </table>\n'
+    html_string += '          </td>\n'
+    html_string += '        </tr>\n'
+    html_string += '\n'
+
+# Write information about simulated alignments.
+if n_alignments > 0:
+
+    # The c-genes section.
+    html_string += '        <tr class=\"smallSpaceUnder\">\n'
+    html_string += '          <td style=\"font-size:30px; font-weight:bold\">Alignments</td>\n'
+    html_string += '        </tr>\n'
+    html_string += '        <tr class=\"spaceUnder\">\n'
+    html_string += '          <td>\n'
+    html_string += '            <table width=\"840\" border=\"0\" cellpadding=\"0\" cellspacing=\"1\">\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td width=\"160\" style=\"font-weight:bold\"># alignments</td>\n'
+    html_string += '                <td>{}</td>\n'.format(n_alignments)
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td width=\"160\" style=\"font-weight:bold\">Alignment length</td>\n'
+    html_string += '                <td>{} bp</td>\n'.format(alignment_length)
+    html_string += '              </tr>\n'
+    html_string += '              <tr>\n'
+    html_string += '                <td width=\"160\" style=\"font-weight:bold\">Mutation rate</td>\n'
+    mut_rate_string = str(mut_rate)
+    if "e" in mut_rate_string:
+        mut_rate_string_convert = "{:.3f}".format(float(mut_rate_string.split("e")[0])) + " &times; 10<sup>" + str(int(mut_rate_string.split("e")[1])) + "</sup>"
+    else:
+        mut_rate_string_convert = mut_rate_string
+    html_string += '                <td>{} per generation</td>\n'.format(mut_rate_string_convert)
+    html_string += '              </tr>\n'
+
+    if rec_map != None:
+        html_string += '              <tr>\n'
+        if n_alignments > 1:
+            html_string += '                <td width=\"160\" style=\"font-weight:bold\">Recombination rates</td>\n'
+            rec_rate_min = min(aln_rec_rates)
+            rec_rate_min_string = str(rec_rate_min)
+            if "e" in rec_rate_min_string:
+                rec_rate_min_string_convert = "{:.3f}".format(float(rec_rate_min_string.split("e")[0])) + " &times; 10<sup>" + str(int(rec_rate_min_string.split("e")[1])) + "</sup>"
+            else:
+                rec_rate_min_string_convert = rec_rate_min_string
+            rec_rate_max = max(aln_rec_rates)
+            rec_rate_max_string = str(rec_rate_max)
+            if "e" in rec_rate_max_string:
+                rec_rate_max_string_convert = "{:.3f}".format(float(rec_rate_max_string.split("e")[0])) + " &times; 10<sup>" + str(int(rec_rate_max_string.split("e")[1])) + "</sup>"
+            else:
+                rec_rate_max_string_convert = rec_rate_max_string
+            html_string += '                <td>{} &ndash; {} per generation</td>\n'.format(rec_rate_min_string_convert, rec_rate_max_string_convert)
+        else:
+            html_string += '                <td width=\"160\" style=\"font-weight:bold\">Recombination rate</td>\n'
+            rec_rate_string = str(aln_rec_rates[0])
+            if "e" in rec_rate_string:
+                rec_rate_string_convert = "{:.3f}".format(float(rec_rate_string.split("e")[0])) + " &times; 10<sup>" + str(int(rec_rate_string.split("e")[1])) + "</sup>"
+            else:
+                rec_rate_string_convert = rec_rate_string
+            html_string += '                <td>{} per generation</td>\n'.format(rec_rate_string_convert)
+        html_string += '              </tr>\n'
+    else:
+        html_string += '              <tr>\n'
+        html_string += '                <td width=\"160\" style=\"font-weight:bold\">Recombination rate</td>\n'
+        rec_rate_string = str(rec_rate)
+        if "e" in rec_rate_string:
+            rec_rate_string_convert = "{:.3f}".format(float(rec_rate_string.split("e")[0])) + " &times; 10<sup>" + str(int(rec_rate_string.split("e")[1])) + "</sup>"
+        else:
+            rec_rate_string_convert = rec_rate_string
+        html_string += '                <td>{} per generation</td>\n'.format(rec_rate_string_convert)
+        html_string += '              </tr>\n'
+
+    html_string += '            </table>\n'
+    html_string += '          </td>\n'
+    html_string += '        </tr>\n'
+    html_string += '        <tr class=\"spaceOverAndLargeSpaceUnder\">\n'
+    html_string += '          <td>\n'
+    html_string += '            <table width=\"840\" border=\"0\" cellpadding=\"0\" cellspacing=\"1\">\n'
+    html_string += '              <tr>\n'
+    if rec_map == None:
+        if calculate_parsimony_scores == False:
+            left_width = 210
+            other_widths = 210
+        else:
+            left_width = 180
+            other_widths = 165
+    else:
+        if calculate_parsimony_scores == False:
+            left_width = 180
+            other_widths = 165
+        else:
+            left_width = 140
+            other_widths = 140
+
+    html_string += '                <td width=\"{}\" style=\"font-weight:bold\">Alignment file</td>\n'.format(left_width)
+    html_string += '                <td width=\"{}\" style=\"font-weight:bold\"># variable sites</td>\n'.format(other_widths)
+    if rec_map != None:
+        html_string += '                <td width=\"{}\" style=\"font-weight:bold\">Recombination rate</td>\n'.format(other_widths)
+    html_string += '                <td width=\"{}\" style=\"font-weight:bold\"># c-gene breakpoints</td>\n'.format(other_widths)
+    html_string += '                <td width=\"{}\" style=\"font-weight:bold\"># topology breakpoints*</td>\n'.format(other_widths)
+    if calculate_parsimony_scores:
+        html_string += '                <td width=\"{}\" style=\"font-weight:bold\">parsimony score</td>\n'.format(other_widths)
+    html_string += '              </tr>\n'
+    for i in range(0, n_alignments):
+        html_string += '              <tr>\n'
+        phylip_outfile_name_abbreviated = phylip_outfile_names[i].split('/')[-1]
+        if len(phylip_outfile_name_abbreviated) > 15:
+            phylip_outfile_name_abbreviated = phylip_outfile_name_abbreviated[:10] + "..." + phylip_outfile_name_abbreviated[-5:]
+        html_string += '                <td style=\"font-weight:bold\"><a href=\"{}\">{}</a></td>\n'.format(phylip_outfile_names[i], phylip_outfile_name_abbreviated)
+        html_string += '                <td>{}</td>\n'.format(ns_variants[i])
+        if rec_map != None:
+            rec_rate_string = str(aln_rec_rates[i])
+            if "e" in rec_rate_string:
+                rec_rate_string_convert = "{:.3f}".format(float(rec_rate_string.split("e")[0])) + " &times; 10<sup>" + str(int(rec_rate_string.split("e")[1])) + "</sup>"
+            else:
+                rec_rate_string_convert = rec_rate_string
+            html_string += '                <td>{}</td>\n'.format(rec_rate_string_convert)
+        html_string += '                <td>{}</td>\n'.format(ns_c_gene_break_points[i])
+        html_string += '                <td>{} ({}/{})</td>\n'.format(ns_topology_break_points[i], ns_topology_break_points_with_variants[i], ns_topology_break_points_with_pi_sites[i])
+        if calculate_parsimony_scores:
+            html_string += '                <td>{}</td>\n'.format(parsimony_scores[i])
+        html_string += '              </tr>\n'
+
+    html_string += '            </table>\n'
+    html_string += '            <p><br>*Numbers in parentheses count only those topology breakpoints that are separated by variable sites / parsimony-informative sites.</p>\n'
+    html_string += '          </td>\n'
+    html_string += '        </tr>\n'
+
+
+# Finalize the html string.
+html_string += '      </table>\n'
+html_string += '    </div>\n'
+html_string += '  </body>\n'
+html_string += '</html>\n'
+html_string += ''
+html_string += ''
+
+# Write the html output file.
+html_outfile = open(html_outfile_name, 'w')
+html_outfile.write(html_string)
+
+# Feedback.
+print(' done.')
+print('')
+
+# Feedback.
+print('  Output:')
+print('    Wrote summary to file {}.'.format(html_outfile_name))
+if n_alignments > 0:
+    print('    Wrote alignments to files {}.'.format(args.prefix[0] + '_*.phy'))
+print('')

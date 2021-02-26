@@ -1,0 +1,8 @@
+# m_matschiner Fri Feb 26 00:10:17 CET 2021
+
+Scripts in this directory analyze divergence times and introgression
+among species within Gadinae using AIM and a dataset composed of
+alignments that are generated from a genome-wide SNP set in
+combination with the reference genome. Additionally, D-statistics are
+calculated from genome-wide SNPs with Dsuite, and introgression
+patterns are further investigated with tree-based introgression tests.
