@@ -8,8 +8,8 @@ mkdir -p ../data/assemblies/melAeg
 # Download the gadMor2 assembly.
 cd ../data/assemblies/gadMor2/
 wget https://ndownloader.figshare.com/files/5323414
-mv 5323414 ../data/assemblies/gadMor2/gadMor2.fasta.gz
-gunzip ../data/assemblies/gadMor2/gadMor2.fasta.gz
+mv 5323414 gadMor2.fasta.gz
+gunzip gadMor2.fasta.gz
 cd -
 
 # Download the gadMor_Stat assembly.
