@@ -1,0 +1,12 @@
+Gadmor_bat_spc	#cb4b16 continuous
+Gadmor_twc_spc	#b58900 continuous
+Gadmor_two_spc	#b58900 dashed
+Gadmor_lfc_spc	#268bd2 continuous
+Gadmor_lfo_spc	#268bd2 dashed
+Gadmor_icc_spc	#dc322f continuous
+Gadmor_ico_spc	#dc322f dashed
+Gadmor_avo_spc	#2aa198 dashed
+Gadmor_avc_spc	#2aa198 continuous
+Gadmor_kie_spc	#6c71c4 continuous
+Gadmor_low_spc	#d33682 continuous
+Gadmor_bor_spc	#859900 continuous

@@ -1,0 +1,11 @@
+# m_matschiner Sun Nov 3 12:51:25 CET 2019
+#
+# The following specimens were manually selected to be included
+# in phylogenetic analyses as they represent the "coastal" ecotype
+# on lofoten, averøya, and iceland (where only one specimen was
+# available that was homozygous at all four lgs).
+LOF1106024
+LOF1106004
+AVE1409010
+AVE1409009
+ICC0304011
