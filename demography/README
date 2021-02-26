@@ -1,0 +1,9 @@
+# m_matschiner Thu Jun 11 15:07:55 CEST 2020
+
+Scripts in this directory apply analyses of past demography with
+Relate to vcf files that are split into regions outside and inside of
+supergenes. Additionally, the repeat content is compared inside and
+outside of supergenes.
+
+Note that the program relate must be downloaded manually before
+running the pipeline. See src/run_all.sh.
