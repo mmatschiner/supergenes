@@ -4,7 +4,7 @@
 acct=nn9883k
 
 # Set the number of simulations.
-n_simulations=10000
+n_simulations=100000
 
 # Simulate drift for different population sizes.
 for pop_size in 1000 3000 10000 30000 100000
