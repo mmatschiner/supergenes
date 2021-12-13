@@ -20,7 +20,7 @@ fi
 gunzip -c ../res/gatk/focus_lg12.vcf.gz > tmp.vcf
 
 # Get genotypes at fixed sites.
-ruby get_fixed_site_gts.rb tmp.vcf ../res/ancestry_painting/fixed_sites.txt Gadmor_low1,Gadmor_low2,Gadmor_kie1,Gadmor_kie2,Gadmor_lfc3 Gadmor_bor1,Gadmor_bor2 Gadmor_avc1,Gadmor_avc2,Gadmor_avo1,Gadmor_avo2,Gadmor_bat1,Gadmor_bat2,Gadmor_icc1,Gadmor_ico1,Gadmor_ico2,Gadmor_lfo1,Gadmor_lfo3,Gadmor_twc1,Gadmor_twc2,Gadmor_two1,Gadmor_two2 0.9 0.9
+ruby get_fixed_site_gts.rb tmp.vcf ../res/ancestry_painting/fixed_sites.txt Gadmor_low1,Gadmor_low2,Gadmor_kie1,Gadmor_kie2,Gadmor_lfc3 Gadmor_bor1,Gadmor_bor2 Gadmor_avc1,Gadmor_avc2,Gadmor_avo1,Gadmor_avo2,Gadmor_bat1,Gadmor_bat2,Gadmor_icc1,Gadmor_ico1,Gadmor_ico2,Gadmor_lfo1,Gadmor_lfo2,Gadmor_twc1,Gadmor_twc2,Gadmor_two1,Gadmor_two2 0.9 0.9
 
 # Plot the genotypes at fixed sites.
 ruby plot_fixed_site_gts.rb ../res/ancestry_painting/fixed_sites.txt ../res/ancestry_painting/fixed_sites.svg 0.9 1
