@@ -1,6 +1,6 @@
 # Code repository for analyses conducted in Matschiner et al. (2021)
 
-This code repository is associated with our manuscript entitled "Origin and fate of supergenes in Atlantic cod"<!--, which has been posted to BioRxiv ([]())-->.
+This code repository is associated with our manuscript entitled "Supergene origin and maintenance in Atlantic cod", which is available from [BioRxiv](https://www.biorxiv.org/content/10.1101/2021.02.28.433253v2).
 
 More information on the individual analyses can be found in the `README` files provided in subdirectories (e.g. [`inversion_detection/README`](inversion_detection/README)).
 
